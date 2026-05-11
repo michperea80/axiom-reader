@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#00d4ff" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./css/style.css" />
+  <link rel="stylesheet" href="./css/library.css" />
+  <title>AXIOM Reader</title>
+
+  <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="logo-sym" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="38" fill="none" stroke="white" stroke-width="5"
+        style="filter:drop-shadow(0 0 10px #00d4ff) drop-shadow(0 0 20px #00d4ff)"/>
+      <path d="M 120 22 A 80 80 0 0 1 177 150"
+        fill="none" stroke="#8ab4ca" stroke-width="10" stroke-linecap="round"/>
+      <path d="M 157 168 A 80 80 0 0 1 20 100 A 80 80 0 0 1 45 37"
+        fill="none" stroke="#8ab4ca" stroke-width="10" stroke-linecap="round"/>
+      <polygon points="120,22 108,10 135,8" fill="#8ab4ca"/>
+      <polygon points="45,37 56,48 35,52" fill="#8ab4ca"/>
+    </symbol>
+  </svg>
+</head>
+<body>
+
+<div id="screen-library" class="screen active">
+  <div class="topbar">
+    <div class="topbar-left">
+      <svg class="topbar-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <use href="#logo-sym"/>
+      </svg>
+      <span class="logo">AXIOM // Reader</span>
+    </div>
+  </div>
+  <div id="lib-body">
+    <div id="lib-folders-section">
+      <div class="lib-section-label">My Folders</div>
+      <div id="lib-folders-grid"></div>
+      <button id="add-folder-btn">&#xFF0B; Add Folder</button>
+    </div>
+    <div id="lib-recents-section">
+      <div class="lib-section-label">Recent Files</div>
+      <div id="lib-recents-list"></div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-browse" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-back" id="browse-back-btn">&#x2039;</button>
+      <span class="logo" id="browse-folder-name">Folder</span>
+    </div>
+  </div>
+  <div id="browse-file-list"></div>
+</div>
+
+<div id="screen-reader" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-back" id="reader-back-btn">&#x2039;</button>
+      <svg class="topbar-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <use href="#logo-sym"/>
+      </svg>
+      <span id="file-name">No file loaded</span>
+    </div>
+  </div>
+  <div id="controls">
+    <div id="transport">
+      <button class="t-btn" id="btn-b5">&#x23EE;</button>
+      <button class="t-btn" id="btn-prev">&#x25C0;</button>
+      <button id="play-btn">&#x25B6;</button>
+      <button class="t-btn" id="btn-next">&#x25B6;</button>
+      <button class="t-btn" id="btn-f5">&#x23ED;</button>
+    </div>
+    <div id="bottom-controls">
+      <span class="ctrl-label">Speed</span>
+      <input type="range" id="rate-slider" min="0.5" max="2.0" step="0.1" value="0.95" />
+      <span class="ctrl-val" id="rate-val">0.95&#xD7;</span>
+      <select id="voice-sel"></select>
+      <button class="open-btn" id="open-btn">Open file</button>
+      <span id="pos-label">&#x2014; / &#x2014;</span>
+    </div>
+  </div>
+  <div id="reader-main">
+    <div id="load-screen">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"
+           style="width:72px;height:72px;opacity:0.35;margin-bottom:8px">
+        <use href="#logo-sym"/>
+      </svg>
+      <h2>Open a Canon File</h2>
+      <p>Select any .md file from your library, or open one directly. The info card and revision notes are displayed but not read aloud.</p>
+      <button class="pick-btn" id="load-pick-btn">Select File</button>
+    </div>
+    <div id="doc-view" style="display:none">
+      <div id="doc-render"></div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".md,.txt" />
+
+<script src="./js/parser.js"></script>
+<script src="./js/tts.js"></script>
+<script src="./js/library.js"></script>
+<script src="./js/app.js"></script>
+
+</body>
+</html>
