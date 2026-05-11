@@ -39,21 +39,21 @@ html, body {
 .topbar-logo { width: 28px; height: 28px; flex-shrink: 0; }
 .logo {
   font-family: 'Courier New', monospace;
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: var(--cyan);
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #ffffff;
   text-transform: uppercase;
 }
 .topbar-back {
-  background: none; border: none; color: var(--muted);
-  font-size: 18px; cursor: pointer; padding: 4px 8px 4px 0;
+  background: none; border: none; color: #ffffff;
+  font-size: 22px; cursor: pointer; padding: 4px 8px 4px 0;
   -webkit-tap-highlight-color: transparent;
 }
 .topbar-back:active { color: var(--cyan); }
 #file-name {
   font-family: 'Courier New', monospace;
-  font-size: 9px; color: var(--muted);
-  text-transform: uppercase; max-width: 180px;
+  font-size: 12px; color: rgba(255,255,255,0.8);
+  text-transform: uppercase; max-width: 200px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -68,8 +68,8 @@ html, body {
   gap: 20px; margin-bottom: 8px;
 }
 .t-btn {
-  background: none; border: none; color: var(--muted);
-  font-size: 20px; cursor: pointer; padding: 5px; line-height: 1;
+  background: none; border: none; color: rgba(255,255,255,0.85);
+  font-size: 22px; cursor: pointer; padding: 5px; line-height: 1;
   -webkit-tap-highlight-color: transparent; user-select: none;
 }
 .t-btn:active { color: var(--cyan); }
@@ -87,8 +87,8 @@ html, body {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .ctrl-label {
-  font-family: 'Courier New', monospace; font-size: 9px;
-  letter-spacing: 2px; color: rgba(255,255,255,0.45);
+  font-family: 'Courier New', monospace; font-size: 12px;
+  letter-spacing: 1px; color: rgba(255,255,255,0.7);
   text-transform: uppercase; white-space: nowrap;
 }
 input[type=range] {
@@ -101,24 +101,24 @@ input[type=range]::-webkit-slider-thumb {
   border-radius: 50%; background: var(--cyan); cursor: pointer;
 }
 .ctrl-val {
-  font-family: 'Courier New', monospace; font-size: 10px;
-  color: var(--cyan); min-width: 30px; text-align: right;
+  font-family: 'Courier New', monospace; font-size: 13px;
+  color: var(--cyan); min-width: 36px; text-align: right;
 }
 select {
-  flex: 1; min-width: 100px; max-width: 170px;
+  flex: 1; min-width: 100px; max-width: 180px;
   background: rgba(0,212,255,0.06); border: 1px solid var(--border);
-  color: var(--text); font-size: 11px; padding: 5px 7px; border-radius: 2px;
+  color: var(--text); font-size: 13px; padding: 5px 7px; border-radius: 2px;
 }
 .open-btn {
-  background: none; border: 1px solid rgba(0,212,255,0.2); color: var(--muted);
-  font-family: 'Courier New', monospace; font-size: 9px; letter-spacing: 1px;
-  text-transform: uppercase; padding: 5px 10px; cursor: pointer;
+  background: none; border: 1px solid rgba(255,255,255,0.3); color: #ffffff;
+  font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 1px;
+  text-transform: uppercase; padding: 6px 12px; cursor: pointer;
   border-radius: 2px; flex-shrink: 0; -webkit-tap-highlight-color: transparent;
 }
 .open-btn:active { border-color: var(--cyan); color: var(--cyan); }
 #pos-label {
-  font-family: 'Courier New', monospace; font-size: 9px;
-  color: rgba(255,255,255,0.4); white-space: nowrap; margin-left: auto;
+  font-family: 'Courier New', monospace; font-size: 12px;
+  color: rgba(255,255,255,0.5); white-space: nowrap; margin-left: auto;
 }
 
 #reader-main { flex: 1; overflow: hidden; position: relative; }
@@ -182,11 +182,11 @@ select {
   background: rgba(0,212,255,0.03); border: 1px solid rgba(0,212,255,0.12);
   border-left: 3px solid rgba(0,212,255,0.25); border-radius: 2px;
   padding: 1rem 1.1rem; margin-bottom: 1.5rem;
-  font-family: 'Courier New', monospace; font-size: 0.78rem;
-  line-height: 1.7; color: rgba(255,255,255,0.6);
+  font-family: 'Courier New', monospace; font-size: 0.9rem;
+  line-height: 1.7; color: rgba(255,255,255,0.7);
 }
-.infocard strong { color: rgba(255,255,255,0.75) !important; font-weight: normal; }
-.infocard-label { font-size: 0.65rem; letter-spacing: 3px; color: rgba(0,212,255,0.3); text-transform: uppercase; margin-bottom: 0.6rem; }
+.infocard strong { color: rgba(255,255,255,0.85) !important; font-weight: normal; }
+.infocard-label { font-size: 0.75rem; letter-spacing: 2px; color: rgba(0,212,255,0.5); text-transform: uppercase; margin-bottom: 0.6rem; }
 
 .endmatter { opacity: 0.22; font-family: 'Courier New', monospace; font-size: 0.8rem; pointer-events: none; }
 .endmatter h2, .endmatter h3, .endmatter h4 { color: rgba(200,216,232,0.5) !important; border-top-color: rgba(0,212,255,0.05) !important; }
