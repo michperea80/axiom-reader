@@ -72,9 +72,8 @@ function recoverPlayback() {
   if (!playing) return;
   if (!wakeLock) requestWakeLock();
   if (silentAudio && silentAudio.paused) silentAudio.play().catch(() => {});
-  if (synth.paused) {
-    synth.resume();
-  } else if (!synth.speaking && !synth.pending) {
+  synth.resume();
+  if (!synth.paused && !synth.speaking && !synth.pending) {
     synth.cancel();
     speak(idx);
   }
@@ -82,6 +81,7 @@ function recoverPlayback() {
 
 document.addEventListener('visibilitychange', () => { if (!document.hidden) recoverPlayback(); });
 window.addEventListener('focus', recoverPlayback);
+window.addEventListener('pageshow', recoverPlayback);
 
 const synth = window.speechSynthesis;
 let voices  = [];
@@ -151,7 +151,9 @@ function toggleTTS() { if (playing) stopTTS(); else startTTS(); }
 function setBtn(s)   { document.getElementById('play-btn').textContent = s === 'play' ? '▶' : '⏸'; }
 
 setInterval(() => {
-  if (playing && !synth.speaking && !synth.pending) speak(idx);
+  if (!playing) return;
+  if (synth.paused) { synth.resume(); return; }
+  if (!synth.speaking && !synth.pending) speak(idx);
 }, 1200);
 
 function jump(delta) {

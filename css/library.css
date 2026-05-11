@@ -33,19 +33,23 @@
 }
 .folder-card-delete {
   position: absolute; top: 5px; right: 6px; background: none; border: none;
-  color: rgba(200,216,232,0.2); font-size: 11px; cursor: pointer;
+  color: rgba(255,255,255,0.3); font-size: 11px; cursor: pointer;
   padding: 2px 4px; -webkit-tap-highlight-color: transparent; line-height: 1;
 }
 .folder-card-delete:active { color: rgba(255,80,80,0.8); }
 
-#add-folder-btn {
-  display: flex; align-items: center; gap: 8px; background: none;
-  border: 1px dashed rgba(0,212,255,0.2); color: rgba(0,212,255,0.55);
-  font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px;
-  text-transform: uppercase; padding: 10px 16px; border-radius: 4px;
-  cursor: pointer; width: 100%; -webkit-tap-highlight-color: transparent;
+#add-folder-row {
+  display: flex; gap: 8px;
 }
-#add-folder-btn:active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.05); }
+
+.quick-folder-btn {
+  flex: 1; background: none;
+  border: 1px dashed rgba(0,212,255,0.2); color: rgba(0,212,255,0.65);
+  font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px;
+  text-transform: uppercase; padding: 10px 8px; border-radius: 4px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; text-align: center;
+}
+.quick-folder-btn:active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.05); }
 
 #lib-recents-section { margin-bottom: 24px; }
 
@@ -66,7 +70,7 @@
 }
 .recent-play:active { background: rgba(0,212,255,0.15); }
 .recent-delete {
-  background: none; border: none; color: rgba(200,216,232,0.2);
+  background: none; border: none; color: rgba(255,255,255,0.3);
   font-size: 12px; padding: 6px; cursor: pointer;
   flex-shrink: 0; -webkit-tap-highlight-color: transparent;
 }

@@ -7,8 +7,8 @@
   --cyan:   #00d4ff;
   --teal:   #00ffcc;
   --gold:   #ffd580;
-  --text:   #c8d8e8;
-  --muted:  rgba(200, 216, 232, 0.45);
+  --text:   #ffffff;
+  --muted:  rgba(255, 255, 255, 0.6);
 }
 
 html, body {
@@ -88,7 +88,7 @@ html, body {
 }
 .ctrl-label {
   font-family: 'Courier New', monospace; font-size: 9px;
-  letter-spacing: 2px; color: rgba(200,216,232,0.3);
+  letter-spacing: 2px; color: rgba(255,255,255,0.45);
   text-transform: uppercase; white-space: nowrap;
 }
 input[type=range] {
@@ -118,7 +118,7 @@ select {
 .open-btn:active { border-color: var(--cyan); color: var(--cyan); }
 #pos-label {
   font-family: 'Courier New', monospace; font-size: 9px;
-  color: rgba(200,216,232,0.25); white-space: nowrap; margin-left: auto;
+  color: rgba(255,255,255,0.4); white-space: nowrap; margin-left: auto;
 }
 
 #reader-main { flex: 1; overflow: hidden; position: relative; }
@@ -141,12 +141,12 @@ select {
 }
 #doc-render h3 { font-size: 1rem; font-weight: 600; color: var(--gold); margin: 1.75rem 0 0.6rem; }
 #doc-render h4 {
-  font-size: 0.88rem; font-weight: 600; color: rgba(200,216,232,0.65);
+  font-size: 0.88rem; font-weight: 600; color: rgba(255,255,255,0.75);
   text-transform: uppercase; letter-spacing: 0.05em; margin: 1.25rem 0 0.5rem;
 }
 #doc-render p { font-size: 1rem; line-height: 1.85; color: var(--text); margin-bottom: 1rem; }
-#doc-render strong { color: #e8f0f8; font-weight: 600; }
-#doc-render em { color: rgba(200,216,232,0.8); font-style: italic; }
+#doc-render strong { color: #ffffff; font-weight: 600; }
+#doc-render em { color: rgba(255,255,255,0.85); font-style: italic; }
 #doc-render del { text-decoration: line-through; opacity: 0.5; }
 #doc-render code {
   font-family: 'Courier New', monospace; font-size: 0.82em;
@@ -156,7 +156,7 @@ select {
   background: rgba(0,0,0,0.4); border: 1px solid rgba(0,212,255,0.1);
   border-radius: 3px; padding: 1rem; overflow-x: auto; margin-bottom: 1rem;
 }
-#doc-render pre code { background: none; padding: 0; font-size: 0.8rem; color: rgba(200,216,232,0.6); }
+#doc-render pre code { background: none; padding: 0; font-size: 0.8rem; color: rgba(255,255,255,0.7); }
 #doc-render hr { border: none; border-top: 1px solid rgba(0,212,255,0.1); margin: 1.5rem 0; }
 #doc-render ul, #doc-render ol { padding-left: 1.4rem; margin-bottom: 1rem; }
 #doc-render ul { list-style: none; }
@@ -166,7 +166,7 @@ select {
 #doc-render li { margin-bottom: 0.4rem; line-height: 1.7; color: var(--text); }
 #doc-render blockquote {
   border-left: 2px solid var(--gold); margin: 1rem 0;
-  padding: 0.5rem 1rem; color: rgba(200,216,232,0.75); font-style: italic;
+  padding: 0.5rem 1rem; color: rgba(255,255,255,0.85); font-style: italic;
 }
 #doc-render table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.88rem; }
 #doc-render th {
@@ -183,9 +183,9 @@ select {
   border-left: 3px solid rgba(0,212,255,0.25); border-radius: 2px;
   padding: 1rem 1.1rem; margin-bottom: 1.5rem;
   font-family: 'Courier New', monospace; font-size: 0.78rem;
-  line-height: 1.7; color: rgba(200,216,232,0.45);
+  line-height: 1.7; color: rgba(255,255,255,0.6);
 }
-.infocard strong { color: rgba(200,216,232,0.55) !important; font-weight: normal; }
+.infocard strong { color: rgba(255,255,255,0.75) !important; font-weight: normal; }
 .infocard-label { font-size: 0.65rem; letter-spacing: 3px; color: rgba(0,212,255,0.3); text-transform: uppercase; margin-bottom: 0.6rem; }
 
 .endmatter { opacity: 0.22; font-family: 'Courier New', monospace; font-size: 0.8rem; pointer-events: none; }

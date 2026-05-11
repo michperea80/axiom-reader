@@ -138,13 +138,15 @@ async function renderBrowseScreen(folder, files) {
   window._browseFolderId = folder.id;
 }
 
-async function addFolder() {
+async function addFolder(startIn = null) {
   if (!window.showDirectoryPicker) {
     alert('Your browser does not support folder access.\nUse "Open file" in the reader to load files. They will be saved to Recent Files automatically.');
     return;
   }
   try {
-    const handle = await window.showDirectoryPicker({ mode: 'read' });
+    const opts = { mode: 'read' };
+    if (startIn) opts.startIn = startIn;
+    const handle = await window.showDirectoryPicker(opts);
     await folderSave(handle.name, handle);
     await renderLibraryScreen();
   } catch (e) {

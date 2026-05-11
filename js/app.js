@@ -57,7 +57,9 @@ async function appInit() {
   }
 }
 
-document.getElementById('add-folder-btn').addEventListener('click', addFolder);
+document.getElementById('add-folder-btn').addEventListener('click', () => addFolder());
+document.getElementById('add-docs-btn').addEventListener('click', () => addFolder('documents'));
+document.getElementById('add-downloads-btn').addEventListener('click', () => addFolder('downloads'));
 
 document.getElementById('lib-folders-grid').addEventListener('click', async e => {
   const del = e.target.closest('.folder-card-delete');
