@@ -15,39 +15,18 @@
   <link rel="stylesheet" href="./css/library.css" />
   <title>AXIOM Reader</title>
 
-  <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
-    <symbol id="logo-sym" viewBox="0 0 200 200">
-      <circle cx="100" cy="100" r="38" fill="none" stroke="white" stroke-width="5"
-        style="filter:drop-shadow(0 0 10px #00d4ff) drop-shadow(0 0 20px #00d4ff)"/>
-      <path d="M 120 22 A 80 80 0 0 1 177 150"
-        fill="none" stroke="#8ab4ca" stroke-width="10" stroke-linecap="round"/>
-      <path d="M 157 168 A 80 80 0 0 1 20 100 A 80 80 0 0 1 45 37"
-        fill="none" stroke="#8ab4ca" stroke-width="10" stroke-linecap="round"/>
-      <polygon points="120,22 108,10 135,8" fill="#8ab4ca"/>
-      <polygon points="45,37 56,48 35,52" fill="#8ab4ca"/>
-    </symbol>
-  </svg>
 </head>
 <body>
 
 <div id="screen-library" class="screen active">
   <div class="topbar">
     <div class="topbar-left">
-      <svg class="topbar-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-        <use href="#logo-sym"/>
-      </svg>
       <span class="logo">AXIOM // Reader</span>
     </div>
   </div>
   <div id="lib-body">
-    <div id="lib-folders-section">
-      <div class="lib-section-label">My Folders</div>
-      <div id="lib-folders-grid"></div>
-      <div id="add-folder-row">
-        <button id="add-docs-btn" class="quick-folder-btn">Documents</button>
-        <button id="add-downloads-btn" class="quick-folder-btn">Downloads</button>
-        <button id="add-folder-btn" class="quick-folder-btn">&#xFF0B; Browse</button>
-      </div>
+    <div id="lib-browse-section">
+      <button id="open-folder-btn" class="open-folder-btn">&#x1F4C2; Open Folder</button>
     </div>
     <div id="lib-recents-section">
       <div class="lib-section-label">Recent Files</div>
@@ -70,11 +49,9 @@
   <div class="topbar">
     <div class="topbar-left">
       <button class="topbar-back" id="reader-back-btn">&#x2039;</button>
-      <svg class="topbar-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-        <use href="#logo-sym"/>
-      </svg>
-      <span id="file-name">No file loaded</span>
+      <span class="logo">AXIOM</span>
     </div>
+    <span id="file-name">No file loaded</span>
   </div>
   <div id="controls">
     <div id="transport">
@@ -95,11 +72,8 @@
   </div>
   <div id="reader-main">
     <div id="load-screen">
-      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"
-           style="width:72px;height:72px;opacity:0.35;margin-bottom:8px">
-        <use href="#logo-sym"/>
-      </svg>
-      <h2>Open a Canon File</h2>
+      <div class="load-icon">&#x1F4C4;</div>
+      <h2>Open a File</h2>
       <p>Select any .md file from your library, or open one directly. The info card and revision notes are displayed but not read aloud.</p>
       <button class="pick-btn" id="load-pick-btn">Select File</button>
     </div>
@@ -110,6 +84,7 @@
 </div>
 
 <input type="file" id="file-input" accept=".md,.txt" />
+<input type="file" id="dir-input" webkitdirectory />
 
 <script src="./js/parser.js"></script>
 <script src="./js/tts.js"></script>

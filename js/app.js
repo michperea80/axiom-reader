@@ -57,21 +57,13 @@ async function appInit() {
   }
 }
 
-document.getElementById('add-folder-btn').addEventListener('click', () => addFolder());
-document.getElementById('add-docs-btn').addEventListener('click', () => addFolder('documents'));
-document.getElementById('add-downloads-btn').addEventListener('click', () => addFolder('downloads'));
+document.getElementById('open-folder-btn').addEventListener('click', () =>
+  document.getElementById('dir-input').click()
+);
 
-document.getElementById('lib-folders-grid').addEventListener('click', async e => {
-  const del = e.target.closest('.folder-card-delete');
-  if (del) {
-    e.stopPropagation();
-    const id = parseInt(del.dataset.folderId);
-    await folderDelete(id);
-    await renderLibraryScreen();
-    return;
-  }
-  const card = e.target.closest('.folder-card');
-  if (card) browseFolder(parseInt(card.dataset.folderId));
+document.getElementById('dir-input').addEventListener('change', e => {
+  if (e.target.files.length) handleDirSelection(e.target.files);
+  e.target.value = '';
 });
 
 document.getElementById('lib-recents-list').addEventListener('click', async e => {

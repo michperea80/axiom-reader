@@ -10,46 +10,16 @@
 
 .lib-empty { font-size: 15px; color: var(--muted); padding: 12px 0; }
 
-#lib-folders-section { margin-bottom: 32px; }
+#lib-browse-section { margin-bottom: 28px; }
 
-#lib-folders-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 12px; margin-bottom: 14px;
-}
-
-.folder-card {
-  background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.14);
-  border-radius: 4px; padding: 14px 12px 12px; cursor: pointer;
-  position: relative; display: flex; flex-direction: column;
-  align-items: center; gap: 8px; -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s, border-color 0.15s;
-}
-.folder-card:active { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.35); }
-.folder-card-icon { opacity: 0.75; }
-.folder-card-name {
-  font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 0.5px;
-  color: #ffffff; text-align: center; word-break: break-all;
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;
-}
-.folder-card-delete {
-  position: absolute; top: 5px; right: 6px; background: none; border: none;
-  color: rgba(255,255,255,0.3); font-size: 11px; cursor: pointer;
-  padding: 2px 4px; -webkit-tap-highlight-color: transparent; line-height: 1;
-}
-.folder-card-delete:active { color: rgba(255,80,80,0.8); }
-
-#add-folder-row {
-  display: flex; gap: 8px;
-}
-
-.quick-folder-btn {
-  flex: 1; background: none;
-  border: 1px solid rgba(255,255,255,0.25); color: #ffffff;
-  font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 1px;
-  text-transform: uppercase; padding: 11px 8px; border-radius: 4px;
+.open-folder-btn {
+  width: 100%; background: none;
+  border: 1px solid rgba(0,212,255,0.35); color: var(--cyan);
+  font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 1.5px;
+  text-transform: uppercase; padding: 13px 8px; border-radius: 4px;
   cursor: pointer; -webkit-tap-highlight-color: transparent; text-align: center;
 }
-.quick-folder-btn:active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.08); }
+.open-folder-btn:active { background: rgba(0,212,255,0.1); border-color: var(--cyan); }
 
 #lib-recents-section { margin-bottom: 24px; }
 
@@ -97,6 +67,7 @@
 }
 #load-screen h2 { font-family: 'Courier New', monospace; font-size: 14px; letter-spacing: 2px; color: #ffffff; text-transform: uppercase; }
 #load-screen p { font-size: 16px; color: rgba(255,255,255,0.75); max-width: 300px; line-height: 1.6; }
+.load-icon { font-size: 56px; opacity: 0.5; line-height: 1; }
 .pick-btn {
   background: var(--cyan); color: var(--bg); border: none;
   font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold;

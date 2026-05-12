@@ -1,35 +1,40 @@
-let silentAudio = null;
-let silentSrc   = null;
+let audioCtx = null;
+let keepAliveSource = null;
+let keepAliveScheduled = false;
 
-function buildSilentWavSrc() {
-  if (silentSrc) return silentSrc;
-  const sr = 8000, n = sr;
-  const ab = new ArrayBuffer(44 + n * 2);
-  const v  = new DataView(ab);
-  const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  ws(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true);
-  ws(8, 'WAVE'); ws(12, 'fmt '); v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
-  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-  ws(36, 'data'); v.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, 1, true);
-  silentSrc = URL.createObjectURL(new Blob([ab], { type: 'audio/wav' }));
-  return silentSrc;
+function ensureAudioCtx() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return;
+  }
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
 }
 
 function startKeepAlive() {
-  if (!silentAudio) {
-    silentAudio        = new Audio();
-    silentAudio.loop   = true;
-    silentAudio.volume = 0.01;
-    silentAudio.src    = buildSilentWavSrc();
+  if (!audioCtx || keepAliveScheduled) return;
+  keepAliveScheduled = true;
+  const sr = audioCtx.sampleRate;
+  const frameCount = Math.ceil(sr * 0.1);
+  const buf = audioCtx.createBuffer(1, frameCount, sr);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < frameCount; i++) data[i] = (Math.random() * 2 - 1) * 0.0001;
+  function scheduleNext() {
+    if (!playing || !audioCtx) { keepAliveScheduled = false; return; }
+    keepAliveSource = audioCtx.createBufferSource();
+    keepAliveSource.buffer = buf;
+    keepAliveSource.connect(audioCtx.destination);
+    keepAliveSource.onended = scheduleNext;
+    keepAliveSource.start();
   }
-  silentAudio.play().catch(() => {});
+  scheduleNext();
 }
 
 function stopKeepAlive() {
-  if (silentAudio) silentAudio.pause();
+  keepAliveScheduled = false;
+  if (keepAliveSource) {
+    try { keepAliveSource.onended = null; keepAliveSource.stop(); } catch (_) {}
+    keepAliveSource = null;
+  }
 }
 
 let wakeLock = null;
@@ -71,7 +76,7 @@ function updateMediaSession(state) {
 function recoverPlayback() {
   if (!playing) return;
   if (!wakeLock) requestWakeLock();
-  if (silentAudio && silentAudio.paused) silentAudio.play().catch(() => {});
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   synth.resume();
   if (!synth.paused && !synth.speaking && !synth.pending) {
     synth.cancel();
@@ -119,7 +124,6 @@ function speak(i) {
   highlightBlock(ttsList[i].blockIdx);
   updatePos();
   updateMediaSession('playing');
-
   const utt  = new SpeechSynthesisUtterance(ttsList[i].text);
   utt.rate   = parseFloat(document.getElementById('rate-slider').value);
   const vi   = parseInt(document.getElementById('voice-sel').value);
@@ -130,6 +134,7 @@ function speak(i) {
 }
 
 function startTTS() {
+  ensureAudioCtx();
   playing = true;
   setBtn('pause');
   startKeepAlive();
