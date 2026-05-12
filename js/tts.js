@@ -96,6 +96,28 @@ let queueToken = 0;
 
 const SYSTEM_VOICE_VALUE = 'system';
 const SAVED_VOICE_KEY = 'axiom-reader-voice';
+const SAVED_RATE_KEY = 'axiom-reader-rate';
+
+function saveCurrentReadPosition() {
+  if (typeof saveReadPosition === 'function') saveReadPosition();
+}
+
+function saveRateSetting(value) {
+  localStorage.setItem(SAVED_RATE_KEY, value);
+}
+
+function restoreTTSSettings() {
+  const slider = document.getElementById('rate-slider');
+  const label = document.getElementById('rate-val');
+  const savedRate = parseFloat(localStorage.getItem(SAVED_RATE_KEY));
+  if (slider && Number.isFinite(savedRate)) {
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    const clamped = Math.max(min, Math.min(max, savedRate));
+    slider.value = clamped.toFixed(1);
+    if (label) label.textContent = clamped.toFixed(1) + '\xD7';
+  }
+}
 
 function voiceKey(voice) {
   return [voice.voiceURI, voice.lang, voice.name].filter(Boolean).join('|');
@@ -132,10 +154,11 @@ function loadVoices() {
     seen.add(key);
     unique.push(v);
   });
-  voices = unique;
+  voices = unique.filter(isEnglishVoice);
 
   const saved = localStorage.getItem(SAVED_VOICE_KEY);
-  const prev = sel.value || saved || SYSTEM_VOICE_VALUE;
+  const current = sel.value && sel.value !== SYSTEM_VOICE_VALUE ? sel.value : '';
+  const prev = current || saved || SYSTEM_VOICE_VALUE;
 
   sel.innerHTML = '';
 
@@ -149,9 +172,7 @@ function loadVoices() {
     return;
   }
 
-  const preferred = voices.filter(isEnglishVoice);
-  const other = voices.filter(v => !isEnglishVoice(v));
-  const ordered = [...preferred, ...other];
+  const ordered = voices;
 
   ordered.forEach(v => {
     const option = document.createElement('option');
@@ -251,6 +272,7 @@ function startTTS() {
 }
 
 function stopTTS() {
+  saveCurrentReadPosition();
   playing = false;
   queueToken += 1;
   setBtn('play');
@@ -270,9 +292,11 @@ setInterval(() => {
 }, 1200);
 
 function jump(delta) {
-  const was = playing; stopTTS();
+  const was = playing;
+  if (was) stopTTS();
   idx = Math.max(0, Math.min(ttsList.length - 1, idx + delta));
   if (was) startTTS(); else { highlightBlock(ttsList[idx]?.blockIdx); updatePos(); }
+  saveCurrentReadPosition();
 }
 
 function highlightBlock(blockIdx) {

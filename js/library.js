@@ -53,9 +53,10 @@ async function recentFileSave(name, content, folderId = null) {
     ...(existing || {}),
     name, content, folderId,
     openedAt: Date.now(),
-    readPosition: 0,
+    readPosition: existing ? existing.readPosition || 0 : 0,
   };
-  return idbPut('recentFiles', record);
+  const id = await idbPut('recentFiles', record);
+  return { id, readPosition: record.readPosition };
 }
 
 async function recentFileUpdatePosition(id, position) {
@@ -131,7 +132,7 @@ async function openBrowseFile(idx) {
   if (!f) return;
   const content = await f.text();
   const saved   = await recentFileSave(f.name, content, null);
-  loadFile({ name: f.name, content, recentId: saved });
+  loadFile({ name: f.name, content, recentId: saved.id, resumePosition: saved.readPosition });
 }
 
 async function openRecentFile(id) {

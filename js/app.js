@@ -42,13 +42,15 @@ function loadFile(src) {
 }
 
 function saveReadPosition() {
-  if (currentRecentId !== null && idx > 0) {
-    recentFileUpdatePosition(currentRecentId, idx);
+  if (currentRecentId !== null) {
+    return recentFileUpdatePosition(currentRecentId, idx);
   }
+  return Promise.resolve();
 }
 
 async function appInit() {
   await dbInit();
+  restoreTTSSettings();
   setupMediaSession();
   showScreen('library');
   await renderLibraryScreen();
@@ -105,7 +107,9 @@ document.getElementById('btn-b5').addEventListener('click',  () => jump(-5));
 document.getElementById('btn-f5').addEventListener('click',  () => jump(5));
 
 document.getElementById('rate-slider').addEventListener('input', function () {
-  document.getElementById('rate-val').textContent = parseFloat(this.value).toFixed(1) + '\xD7';
+  const rate = parseFloat(this.value).toFixed(1);
+  document.getElementById('rate-val').textContent = rate + '\xD7';
+  saveRateSetting(rate);
   if (playing) { stopTTS(); startTTS(); }
 });
 
@@ -119,7 +123,12 @@ document.getElementById('file-input').addEventListener('change', async e => {
   if (!file) return;
   const content = await file.text();
   const saved = await recentFileSave(file.name, content, null);
-  loadFile({ name: file.name, content, recentId: saved });
+  loadFile({
+    name: file.name,
+    content,
+    recentId: saved.id,
+    resumePosition: saved.readPosition,
+  });
   e.target.value = '';
 });
 
@@ -139,6 +148,13 @@ document.getElementById('doc-render').addEventListener('click', e => {
   const was = playing; stopTTS();
   idx = sentIdx;
   if (was) startTTS(); else { highlightBlock(bi); updatePos(); }
+  saveReadPosition();
 });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveReadPosition();
+});
+window.addEventListener('pagehide', saveReadPosition);
+window.addEventListener('beforeunload', saveReadPosition);
 
 appInit();
