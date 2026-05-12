@@ -92,49 +92,156 @@ const synth = window.speechSynthesis;
 let voices  = [];
 let idx     = 0;
 let playing = false;
+let queueToken = 0;
+
+const SYSTEM_VOICE_VALUE = 'system';
+const SAVED_VOICE_KEY = 'axiom-reader-voice';
+
+function voiceKey(voice) {
+  return [voice.voiceURI, voice.lang, voice.name].filter(Boolean).join('|');
+}
+
+function isEnglishVoice(voice) {
+  return /^en([-_]|$)/i.test(voice.lang || '');
+}
+
+function voiceLabel(voice) {
+  const parts = [voice.name || 'Unnamed voice'];
+  if (voice.lang) parts.push(voice.lang);
+  if (voice.default) parts.push('default');
+  if (voice.localService) parts.push('device');
+  return parts.join(' - ');
+}
+
+function getSelectedVoice() {
+  const sel = document.getElementById('voice-sel');
+  if (!sel || sel.value === SYSTEM_VOICE_VALUE) return null;
+  return voices.find(v => voiceKey(v) === sel.value) || null;
+}
 
 function loadVoices() {
   const all = synth.getVoices();
-  if (!all.length) return;
-  voices = all;
   const sel  = document.getElementById('voice-sel');
-  const prev = sel.value;
-  sel.innerHTML = '';
-  const en   = all.filter(v => v.lang.startsWith('en'));
-  const good = en.filter(v => /natural|premium|neural|enhanced|siri|alex|samantha|karen|daniel|google/i.test(v.name));
-  const rest = en.filter(v => !/natural|premium|neural|enhanced|siri|alex|samantha|karen|daniel|google/i.test(v.name));
-  const ordered = good.length ? [...good, ...rest] : (en.length ? en : all);
-  ordered.forEach(v => {
-    const o = document.createElement('option');
-    o.value = all.indexOf(v);
-    o.textContent = v.name.replace(/\(.*?\)/g, '').trim();
-    sel.appendChild(o);
+  if (!sel) return;
+
+  const unique = [];
+  const seen = new Set();
+  all.forEach(v => {
+    const key = voiceKey(v);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    unique.push(v);
   });
-  if (prev) sel.value = prev;
+  voices = unique;
+
+  const saved = localStorage.getItem(SAVED_VOICE_KEY);
+  const prev = sel.value || saved || SYSTEM_VOICE_VALUE;
+
+  sel.innerHTML = '';
+
+  const systemOption = document.createElement('option');
+  systemOption.value = SYSTEM_VOICE_VALUE;
+  systemOption.textContent = 'Phone default voice';
+  sel.appendChild(systemOption);
+
+  if (!voices.length) {
+    sel.value = SYSTEM_VOICE_VALUE;
+    return;
+  }
+
+  const preferred = voices.filter(isEnglishVoice);
+  const other = voices.filter(v => !isEnglishVoice(v));
+  const ordered = [...preferred, ...other];
+
+  ordered.forEach(v => {
+    const option = document.createElement('option');
+    option.value = voiceKey(v);
+    option.textContent = voiceLabel(v);
+    sel.appendChild(option);
+  });
+
+  if ([...sel.options].some(o => o.value === prev)) {
+    sel.value = prev;
+    return;
+  }
+
+  const defaultVoice = ordered.find(v => v.default) || ordered.find(isEnglishVoice);
+  sel.value = defaultVoice ? voiceKey(defaultVoice) : SYSTEM_VOICE_VALUE;
 }
+
+function primeVoices() {
+  if (!synth) return;
+  loadVoices();
+  [250, 750, 1500, 3000].forEach(delay => setTimeout(loadVoices, delay));
+}
+
 if (typeof synth !== 'undefined') {
   synth.addEventListener('voiceschanged', loadVoices);
-  loadVoices();
+  primeVoices();
+}
+
+function buildUtterance(item, sentenceIdx, token) {
+  const utt = new SpeechSynthesisUtterance(item.text);
+  const selectedVoice = getSelectedVoice();
+  const rate = parseFloat(document.getElementById('rate-slider').value);
+
+  utt.rate = Number.isFinite(rate) ? rate : 0.95;
+  utt.pitch = 1;
+  utt.volume = 1;
+  if (selectedVoice) {
+    utt.voice = selectedVoice;
+    utt.lang = selectedVoice.lang;
+  } else if (navigator.language) {
+    utt.lang = navigator.language;
+  }
+
+  utt.onstart = () => {
+    if (!playing || token !== queueToken) return;
+    idx = sentenceIdx;
+    highlightBlock(item.blockIdx);
+    updatePos();
+    updateMediaSession('playing');
+  };
+
+  utt.onend = () => {
+    if (!playing || token !== queueToken) return;
+    if (sentenceIdx >= ttsList.length - 1) stopTTS();
+  };
+
+  utt.onerror = e => {
+    if (!playing || token !== queueToken) return;
+    if (e.error === 'interrupted' || e.error === 'canceled') return;
+    if (sentenceIdx >= ttsList.length - 1) stopTTS();
+  };
+
+  return utt;
+}
+
+function queueSpeechFrom(startIdx) {
+  if (!ttsList.length) { stopTTS(); return; }
+
+  queueToken += 1;
+  const token = queueToken;
+  synth.cancel();
+
+  idx = Math.max(0, Math.min(ttsList.length - 1, startIdx));
+  highlightBlock(ttsList[idx].blockIdx);
+  updatePos();
+  updateMediaSession('playing');
+
+  for (let i = idx; i < ttsList.length; i += 1) {
+    synth.speak(buildUtterance(ttsList[i], i, token));
+  }
 }
 
 function speak(i) {
   if (i >= ttsList.length) { stopTTS(); return; }
-  synth.cancel();
-  idx = i;
-  highlightBlock(ttsList[i].blockIdx);
-  updatePos();
-  updateMediaSession('playing');
-  const utt  = new SpeechSynthesisUtterance(ttsList[i].text);
-  utt.rate   = parseFloat(document.getElementById('rate-slider').value);
-  const vi   = parseInt(document.getElementById('voice-sel').value);
-  if (!isNaN(vi) && voices[vi]) utt.voice = voices[vi];
-  utt.onend  = () => { if (playing) speak(i + 1); };
-  utt.onerror = e => { if (e.error !== 'interrupted' && playing) speak(i + 1); };
-  synth.speak(utt);
+  queueSpeechFrom(i);
 }
 
 function startTTS() {
   ensureAudioCtx();
+  primeVoices();
   playing = true;
   setBtn('pause');
   startKeepAlive();
@@ -145,6 +252,7 @@ function startTTS() {
 
 function stopTTS() {
   playing = false;
+  queueToken += 1;
   setBtn('play');
   stopKeepAlive();
   releaseWakeLock();

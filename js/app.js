@@ -110,6 +110,7 @@ document.getElementById('rate-slider').addEventListener('input', function () {
 });
 
 document.getElementById('voice-sel').addEventListener('change', () => {
+  localStorage.setItem(SAVED_VOICE_KEY, document.getElementById('voice-sel').value);
   if (playing) { stopTTS(); startTTS(); }
 });
 
