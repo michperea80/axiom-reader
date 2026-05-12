@@ -67,6 +67,8 @@
       <input type="range" id="rate-slider" min="0.5" max="2.0" step="0.1" value="0.95" />
       <span class="ctrl-val" id="rate-val">0.95&#xD7;</span>
       <select id="voice-sel"></select>
+      <button class="open-btn" id="note-current-btn">Note</button>
+      <button class="open-btn" id="save-notes-btn">Save notes</button>
       <button class="open-btn" id="open-btn">Open file</button>
       <span id="pos-label">&#x2014; / &#x2014;</span>
     </div>
@@ -75,7 +77,7 @@
     <div id="load-screen">
       <div class="load-icon">&#x1F4C4;</div>
       <h2>Open a File</h2>
-      <p>Select any .md file from your library, or open one directly. The info card and revision notes are displayed but not read aloud.</p>
+      <p>Select any .md, .txt, or text-based .pdf file from your library, or open one directly. The info card and revision notes are displayed but not read aloud.</p>
       <button class="pick-btn" id="load-pick-btn">Select File</button>
     </div>
     <div id="doc-view" style="display:none">
@@ -84,12 +86,27 @@
   </div>
 </div>
 
-<input type="file" id="file-input" accept=".md,.txt" />
+<div id="note-modal" class="note-modal" aria-hidden="true">
+  <div class="note-dialog" role="dialog" aria-modal="true" aria-labelledby="note-title">
+    <div class="note-kicker">Review Note</div>
+    <h2 id="note-title">Section Note</h2>
+    <blockquote id="note-section-excerpt"></blockquote>
+    <textarea id="note-text" rows="7" placeholder="What needs editing here?"></textarea>
+    <div class="note-actions">
+      <button class="note-delete" id="note-delete-btn">Delete</button>
+      <button class="note-cancel" id="note-cancel-btn">Cancel</button>
+      <button class="note-save" id="note-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".md,.txt,.pdf" />
 <input type="file" id="dir-input" webkitdirectory />
 
 <script src="./js/parser.js"></script>
 <script src="./js/tts.js"></script>
 <script src="./js/library.js"></script>
+<script src="./js/pdf.js"></script>
 <script src="./js/app.js"></script>
 
 </body>

@@ -1,5 +1,5 @@
 const DB_NAME    = 'axiom-reader-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 let db = null;
 
 function dbInit() {
@@ -10,6 +10,11 @@ function dbInit() {
       if (!d.objectStoreNames.contains('recentFiles')) {
         const rs = d.createObjectStore('recentFiles', { keyPath: 'id', autoIncrement: true });
         rs.createIndex('openedAt', 'openedAt', { unique: false });
+      }
+      if (!d.objectStoreNames.contains('notes')) {
+        const ns = d.createObjectStore('notes', { keyPath: 'id', autoIncrement: true });
+        ns.createIndex('fileId', 'fileId', { unique: false });
+        ns.createIndex('fileBlock', ['fileId', 'blockIdx'], { unique: false });
       }
       if (d.objectStoreNames.contains('folders')) d.deleteObjectStore('folders');
     };
@@ -54,6 +59,7 @@ async function recentFileSave(name, content, folderId = null) {
     name, content, folderId,
     openedAt: Date.now(),
     readPosition: existing ? existing.readPosition || 0 : 0,
+    sourceType: /\.pdf$/i.test(name) ? 'pdf' : 'text',
   };
   const id = await idbPut('recentFiles', record);
   return { id, readPosition: record.readPosition };
@@ -70,7 +76,39 @@ async function recentFileList(limit = 20) {
   return all.sort((a, b) => b.openedAt - a.openedAt).slice(0, limit);
 }
 
-async function recentFileDelete(id) { return idbDelete('recentFiles', id); }
+async function recentFileDelete(id) {
+  const notes = await notesForFile(id);
+  await Promise.all(notes.map(note => idbDelete('notes', note.id)));
+  return idbDelete('recentFiles', id);
+}
+
+async function notesForFile(fileId) {
+  if (fileId === null || fileId === undefined) return [];
+  const all = await idbGetAll('notes');
+  return all.filter(n => n.fileId === fileId).sort((a, b) => a.blockIdx - b.blockIdx || a.createdAt - b.createdAt);
+}
+
+async function noteForSection(fileId, blockIdx) {
+  const notes = await notesForFile(fileId);
+  return notes.find(n => n.blockIdx === blockIdx) || null;
+}
+
+async function noteSave(note) {
+  const now = Date.now();
+  const existing = await noteForSection(note.fileId, note.blockIdx);
+  const record = {
+    ...(existing || {}),
+    ...note,
+    noteText: note.noteText.trim(),
+    createdAt: existing ? existing.createdAt : now,
+    updatedAt: now,
+  };
+  return idbPut('notes', record);
+}
+
+async function noteDelete(id) {
+  return idbDelete('notes', id);
+}
 
 function timeAgo(ts) {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -102,9 +140,9 @@ async function renderLibraryScreen() {
 
 function handleDirSelection(fileList) {
   const files = Array.from(fileList)
-    .filter(f => f.name.endsWith('.md') || f.name.endsWith('.txt'));
+    .filter(f => /\.(md|txt|pdf)$/i.test(f.name));
   if (files.length === 0) {
-    alert('No .md or .txt files found in the selected folder.');
+    alert('No .md, .txt, or .pdf files found in the selected folder.');
     return;
   }
   files.sort((a, b) => a.name.localeCompare(b.name));
@@ -130,9 +168,13 @@ function renderBrowseScreenFromFiles(folderName, files) {
 async function openBrowseFile(idx) {
   const f = window._browseFiles[idx];
   if (!f) return;
-  const content = await f.text();
-  const saved   = await recentFileSave(f.name, content, null);
-  loadFile({ name: f.name, content, recentId: saved.id, resumePosition: saved.readPosition });
+  try {
+    const content = await readSupportedFile(f);
+    const saved   = await recentFileSave(f.name, content, null);
+    loadFile({ name: f.name, content, recentId: saved.id, resumePosition: saved.readPosition });
+  } catch (err) {
+    showFileOpenError(err);
+  }
 }
 
 async function openRecentFile(id) {

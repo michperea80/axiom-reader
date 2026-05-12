@@ -1,4 +1,4 @@
-const CACHE = 'axiom-v3';
+const CACHE = 'axiom-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,10 @@ const ASSETS = [
   './js/parser.js',
   './js/tts.js',
   './js/library.js',
+  './js/pdf.js',
   './js/app.js',
+  './vendor/pdfjs/pdf.min.mjs',
+  './vendor/pdfjs/pdf.worker.min.mjs',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
