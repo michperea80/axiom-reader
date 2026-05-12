@@ -10,16 +10,22 @@
 
 .lib-empty { font-size: 15px; color: var(--muted); padding: 12px 0; }
 
-#lib-browse-section { margin-bottom: 28px; }
+#lib-browse-section { margin-bottom: 28px; display: flex; flex-direction: column; gap: 10px; }
 
-.open-folder-btn {
+.open-folder-btn, .open-file-btn {
   width: 100%; background: none;
-  border: 1px solid rgba(0,212,255,0.35); color: var(--cyan);
   font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 1.5px;
   text-transform: uppercase; padding: 13px 8px; border-radius: 4px;
   cursor: pointer; -webkit-tap-highlight-color: transparent; text-align: center;
 }
+.open-folder-btn {
+  border: 1px solid rgba(0,212,255,0.35); color: var(--cyan);
+}
 .open-folder-btn:active { background: rgba(0,212,255,0.1); border-color: var(--cyan); }
+.open-file-btn {
+  border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.75);
+}
+.open-file-btn:active { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.4); }
 
 #lib-recents-section { margin-bottom: 24px; }
 

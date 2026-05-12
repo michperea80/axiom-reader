@@ -66,6 +66,10 @@ document.getElementById('dir-input').addEventListener('change', e => {
   e.target.value = '';
 });
 
+document.getElementById('open-file-btn').addEventListener('click', () =>
+  document.getElementById('file-input').click()
+);
+
 document.getElementById('lib-recents-list').addEventListener('click', async e => {
   const delBtn = e.target.closest('.recent-delete');
   if (delBtn) {
