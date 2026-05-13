@@ -202,7 +202,7 @@ if (typeof synth !== 'undefined') {
 }
 
 function buildUtterance(item, sentenceIdx, token) {
-  const utt = new SpeechSynthesisUtterance(item.text);
+  const utt = new SpeechSynthesisUtterance(item.speechText || item.text);
   const selectedVoice = getSelectedVoice();
   const rate = parseFloat(document.getElementById('rate-slider').value);
 

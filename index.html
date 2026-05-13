@@ -28,6 +28,10 @@
     <div id="lib-browse-section">
       <button id="open-folder-btn" class="open-folder-btn">&#x1F4C2; Open Folder</button>
       <button id="open-file-btn" class="open-file-btn">&#x1F4C4; Open File</button>
+      <button id="backup-data-btn" class="open-file-btn">Backup data</button>
+      <button id="restore-data-btn" class="open-file-btn">Restore data</button>
+      <button id="export-pronunciation-btn" class="open-file-btn">Export pronunciation</button>
+      <button id="import-pronunciation-btn" class="open-file-btn">Import pronunciation</button>
     </div>
     <div id="lib-recents-section">
       <div class="lib-section-label">Recent Files</div>
@@ -67,10 +71,33 @@
       <input type="range" id="rate-slider" min="0.5" max="2.0" step="0.1" value="0.95" />
       <span class="ctrl-val" id="rate-val">0.95&#xD7;</span>
       <select id="voice-sel"></select>
+      <span class="ctrl-label">Status</span>
+      <select id="status-sel" aria-label="Review status">
+        <option value="unread">Unread</option>
+        <option value="in_review">In Review</option>
+        <option value="needs_edits">Needs Edits</option>
+        <option value="reviewed">Reviewed</option>
+      </select>
+      <button class="open-btn" id="search-toggle-btn">Search</button>
+      <button class="open-btn" id="notes-panel-btn">Notes</button>
+      <select id="highlight-kind-sel" aria-label="Highlight label">
+        <option value="important">Important</option>
+        <option value="needs_edit">Needs Edit</option>
+        <option value="fact_check">Fact-check</option>
+        <option value="continuity">Continuity</option>
+      </select>
+      <button class="open-btn" id="highlight-current-btn">Highlight</button>
       <button class="open-btn" id="note-current-btn">Note</button>
       <button class="open-btn" id="save-notes-btn">Save notes</button>
       <button class="open-btn" id="open-btn">Open file</button>
       <span id="pos-label">&#x2014; / &#x2014;</span>
+    </div>
+    <div id="search-bar" aria-hidden="true">
+      <input id="search-input" type="search" autocomplete="off" placeholder="Search current document" />
+      <span id="search-count">0 / 0</span>
+      <button class="search-nav-btn" id="search-prev-btn" title="Previous match">&#x25C0;</button>
+      <button class="search-nav-btn" id="search-next-btn" title="Next match">&#x25B6;</button>
+      <button class="search-nav-btn" id="search-clear-btn" title="Clear search">&#x2715;</button>
     </div>
   </div>
   <div id="reader-main">
@@ -84,6 +111,43 @@
       <div id="doc-render"></div>
     </div>
   </div>
+</div>
+
+<div id="notes-panel" class="notes-panel" aria-hidden="true">
+  <aside class="notes-drawer" aria-labelledby="notes-panel-title">
+    <div class="notes-header">
+      <div>
+        <div class="note-kicker">Current File</div>
+        <h2 id="notes-panel-title">Review Notes</h2>
+      </div>
+      <button class="notes-close" id="notes-close-btn" title="Close notes">&#x2715;</button>
+    </div>
+    <div class="notes-meta">
+      <span id="notes-file-name">No file loaded</span>
+      <span id="notes-status-pill">Unread</span>
+    </div>
+    <div id="review-summary" class="review-summary">
+      <span>0 notes</span>
+      <span>0 highlights</span>
+      <span>0 tasks</span>
+    </div>
+    <div class="notes-actions-top">
+      <select id="export-filter-sel" aria-label="Export filter">
+        <option value="all">Export all</option>
+        <option value="notes">Notes only</option>
+        <option value="highlights">All highlights</option>
+        <option value="highlight:important">Important highlights</option>
+        <option value="highlight:needs_edit">Needs Edit highlights</option>
+        <option value="highlight:fact_check">Fact-check highlights</option>
+        <option value="highlight:continuity">Continuity highlights</option>
+      </select>
+      <button class="open-btn" id="notes-export-btn">Save notes</button>
+    </div>
+    <div class="notes-subhead">Notes</div>
+    <div id="notes-list"></div>
+    <div class="notes-subhead">Highlights</div>
+    <div id="highlights-list"></div>
+  </aside>
 </div>
 
 <div id="note-modal" class="note-modal" aria-hidden="true">
@@ -102,6 +166,8 @@
 
 <input type="file" id="file-input" accept=".md,.txt,.pdf" />
 <input type="file" id="dir-input" webkitdirectory />
+<input type="file" id="restore-input" accept=".json,application/json" />
+<input type="file" id="pronunciation-input" accept=".json,application/json" />
 
 <script src="./js/parser.js"></script>
 <script src="./js/tts.js"></script>

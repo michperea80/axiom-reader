@@ -1,5 +1,138 @@
 let ttsList = [];
 
+const PRONUNCIATION_STORAGE_KEY = 'axiom-reader-pronunciation-map';
+
+const BUILT_IN_SPEECH_WORD_MAP = {
+  AXIOM: 'Axiom',
+  TERRAN: 'Terran',
+  PELARI: 'Pelari',
+  CHORUS: 'Chorus',
+  KELEDH: 'Keledh',
+  VOROKH: 'Vorokh',
+  SKORTH: 'Skorth',
+  VEYDRAN: 'Veydran',
+  SOLARIOTH: 'Solarioth',
+  SYSTEM: 'system',
+  STATUS: 'status',
+  CLASSIFICATION: 'classification',
+  HEADER: 'header',
+  REGISTRY: 'registry',
+  DOCUMENT: 'document',
+  REVISION: 'revision',
+  HISTORY: 'history',
+  NOTES: 'notes',
+  PAGE: 'page',
+  PART: 'part',
+  CHAPTER: 'chapter',
+  SECTION: 'section',
+  PHASE: 'phase',
+  ACT: 'act',
+  BOOK: 'book',
+  VOLUME: 'volume',
+  APPENDIX: 'appendix',
+};
+
+let customSpeechWordMap = {};
+
+function sanitizePronunciationMap(map) {
+  if (!map || typeof map !== 'object' || Array.isArray(map)) return {};
+  return Object.entries(map).reduce((clean, [key, value]) => {
+    const normalizedKey = String(key).trim().toUpperCase();
+    const normalizedValue = String(value).trim();
+    if (/^[A-Z0-9][A-Z0-9_-]*$/.test(normalizedKey) && normalizedValue) {
+      clean[normalizedKey] = normalizedValue;
+    }
+    return clean;
+  }, {});
+}
+
+function loadCustomPronunciationMap() {
+  try {
+    customSpeechWordMap = sanitizePronunciationMap(JSON.parse(localStorage.getItem(PRONUNCIATION_STORAGE_KEY) || '{}'));
+  } catch (_) {
+    customSpeechWordMap = {};
+  }
+  return customSpeechWordMap;
+}
+
+function saveCustomPronunciationMap(map) {
+  customSpeechWordMap = sanitizePronunciationMap(map);
+  localStorage.setItem(PRONUNCIATION_STORAGE_KEY, JSON.stringify(customSpeechWordMap, null, 2));
+  return customSpeechWordMap;
+}
+
+function exportPronunciationMapData() {
+  return {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    pronunciations: customSpeechWordMap,
+  };
+}
+
+function importPronunciationMapData(data) {
+  const map = data && data.pronunciations ? data.pronunciations : data;
+  return saveCustomPronunciationMap(map);
+}
+
+function speechWordMap() {
+  return { ...BUILT_IN_SPEECH_WORD_MAP, ...customSpeechWordMap };
+}
+
+const ROMAN_CONTEXT = '(Part|Chapter|Phase|Section|Act|Book|Volume|Appendix)';
+
+function romanToNumber(roman) {
+  const values = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  let total = 0;
+  let prev = 0;
+  for (let i = roman.length - 1; i >= 0; i -= 1) {
+    const value = values[roman[i]];
+    if (!value) return null;
+    if (value < prev) total -= value;
+    else {
+      total += value;
+      prev = value;
+    }
+  }
+  if (total < 1 || total > 3999) return null;
+  return total;
+}
+
+function numberToWords(num) {
+  const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  if (num < 10) return ones[num];
+  if (num < 20) return teens[num - 10];
+  if (num < 100) return `${tens[Math.floor(num / 10)]}${num % 10 ? ` ${ones[num % 10]}` : ''}`;
+  if (num < 1000) return `${ones[Math.floor(num / 100)]} hundred${num % 100 ? ` ${numberToWords(num % 100)}` : ''}`;
+  return `${ones[Math.floor(num / 1000)]} thousand${num % 1000 ? ` ${numberToWords(num % 1000)}` : ''}`;
+}
+
+function normalizeRomanNumeralsInHeading(text) {
+  return text.replace(new RegExp(`\\b${ROMAN_CONTEXT}\\s+([IVXLCDM]+)\\b`, 'gi'), (match, label, roman) => {
+    const value = romanToNumber(roman.toUpperCase());
+    return value ? `${label} ${numberToWords(value)}` : match;
+  });
+}
+
+function normalizeSpeechText(text, blockType = 'para') {
+  let speech = text.replace(/\s+/g, ' ').trim();
+  if (blockType === 'heading') speech = normalizeRomanNumeralsInHeading(speech);
+  const map = speechWordMap();
+  return speech.replace(/\b[A-Z0-9][A-Z0-9_-]{2,}\b/g, word => map[word] || word);
+}
+
+function addTtsItem(text, blockIdx, blockType = 'para') {
+  const rawText = text.trim();
+  if (!rawText) return;
+  ttsList.push({
+    text: rawText,
+    speechText: normalizeSpeechText(rawText, blockType),
+    blockIdx,
+    blockType,
+  });
+}
+
 function preprocess(raw) {
   let md = raw;
   md = md.replace(/^<!--.*?-->\s*$/gm, '');
@@ -196,32 +329,32 @@ function buildDoc(blocks, h1Idx, infocardStart, infocardEnd, endMatterIdx) {
       });
       thtml += '</table>';
       if (isEndMatter) { html += `<div class="endmatter">${thtml}</div>`; }
-      else { block.rows.forEach(row => { if (!row.isHeader) { const t = row.cells.map(stripInline).filter(Boolean).join(': '); if (t) ttsList.push({ text: t, blockIdx: bi }); } }); html += `<div${eid}>${thtml}</div>`; }
+      else { block.rows.forEach(row => { if (!row.isHeader) { const t = row.cells.map(stripInline).filter(Boolean).join(': '); if (t) addTtsItem(t, bi, 'table'); } }); html += `<div${eid}>${thtml}</div>`; }
       return;
     }
     if (block.type === 'heading') {
       const tag = `h${block.level}`;
       if (isEndMatter) { html += `<${tag} class="endmatter">${inline(block.text)}</${tag}>`; }
-      else { ttsList.push({ text: stripInline(block.text), blockIdx: bi }); html += `<${tag}${eid}>${inline(block.text)}</${tag}>`; }
+      else { addTtsItem(stripInline(block.text), bi, 'heading'); html += `<${tag}${eid}>${inline(block.text)}</${tag}>`; }
       return;
     }
     if (block.type === 'para') {
       const display = block.text.split('\n').map(inline).join(' ');
       if (isEndMatter) { html += `<p class="endmatter">${display}</p>`; }
-      else { splitSentences(stripInline(block.text)).forEach(s => ttsList.push({ text: s, blockIdx: bi })); html += `<p${eid}>${display}</p>`; }
+      else { splitSentences(stripInline(block.text)).forEach(s => addTtsItem(s, bi, 'para')); html += `<p${eid}>${display}</p>`; }
       return;
     }
     if (block.type === 'blockquote') {
       const display = block.text.split('\n').map(inline).join('<br>');
       if (isEndMatter) { html += `<blockquote class="endmatter">${display}</blockquote>`; }
-      else { splitSentences(stripInline(block.text)).forEach(s => ttsList.push({ text: s, blockIdx: bi })); html += `<blockquote${eid}>${display}</blockquote>`; }
+      else { splitSentences(stripInline(block.text)).forEach(s => addTtsItem(s, bi, 'blockquote')); html += `<blockquote${eid}>${display}</blockquote>`; }
       return;
     }
     if (block.type === 'list') {
       const tag = block.ordered ? 'ol' : 'ul';
       const items = block.items.map(item => `<li>${inline(item)}</li>`).join('');
       if (isEndMatter) { html += `<${tag} class="endmatter">${items}</${tag}>`; }
-      else { block.items.forEach(item => ttsList.push({ text: stripInline(item), blockIdx: bi })); html += `<${tag}${eid}>${items}</${tag}>`; }
+      else { block.items.forEach(item => addTtsItem(stripInline(item), bi, 'list')); html += `<${tag}${eid}>${items}</${tag}>`; }
     }
   });
   return html;
