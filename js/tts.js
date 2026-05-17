@@ -93,6 +93,8 @@ let voices  = [];
 let idx     = 0;
 let playing = false;
 let queueToken = 0;
+let speechTimer = null;
+let currentUtterance = null;
 
 const SYSTEM_VOICE_VALUE = 'system';
 const SAVED_VOICE_KEY = 'axiom-reader-voice';
@@ -201,10 +203,30 @@ if (typeof synth !== 'undefined') {
   primeVoices();
 }
 
-function buildUtterance(item, sentenceIdx, token) {
+function clearSpeechTimer() {
+  if (speechTimer) {
+    clearTimeout(speechTimer);
+    speechTimer = null;
+  }
+}
+
+function scheduleSpeech(sentenceIdx, token, delay = 0, attempt = 0, forceSystemVoice = false) {
+  clearSpeechTimer();
+  if (delay <= 0) {
+    speakOne(sentenceIdx, token, attempt, forceSystemVoice);
+    return;
+  }
+  speechTimer = setTimeout(() => {
+    speechTimer = null;
+    speakOne(sentenceIdx, token, attempt, forceSystemVoice);
+  }, delay);
+}
+
+function buildUtterance(item, sentenceIdx, token, attempt = 0, forceSystemVoice = false) {
   const utt = new SpeechSynthesisUtterance(item.speechText || item.text);
-  const selectedVoice = getSelectedVoice();
+  const selectedVoice = forceSystemVoice ? null : getSelectedVoice();
   const rate = parseFloat(document.getElementById('rate-slider').value);
+  let started = false;
 
   utt.rate = Number.isFinite(rate) ? rate : 0.95;
   utt.pitch = 1;
@@ -218,6 +240,7 @@ function buildUtterance(item, sentenceIdx, token) {
 
   utt.onstart = () => {
     if (!playing || token !== queueToken) return;
+    started = true;
     idx = sentenceIdx;
     highlightBlock(item.blockIdx);
     updatePos();
@@ -226,16 +249,52 @@ function buildUtterance(item, sentenceIdx, token) {
 
   utt.onend = () => {
     if (!playing || token !== queueToken) return;
-    if (sentenceIdx >= ttsList.length - 1) stopTTS();
+    currentUtterance = null;
+    if (!started && attempt < 1) {
+      scheduleSpeech(sentenceIdx, token, 150, attempt + 1, !!selectedVoice);
+      return;
+    }
+    saveCurrentReadPosition();
+    if (sentenceIdx >= ttsList.length - 1) {
+      stopTTS();
+      return;
+    }
+    idx = sentenceIdx + 1;
+    scheduleSpeech(idx, token, 70);
   };
 
   utt.onerror = e => {
     if (!playing || token !== queueToken) return;
     if (e.error === 'interrupted' || e.error === 'canceled') return;
-    if (sentenceIdx >= ttsList.length - 1) stopTTS();
+    currentUtterance = null;
+    if (attempt < 1) {
+      scheduleSpeech(sentenceIdx, token, 150, attempt + 1, !!selectedVoice);
+      return;
+    }
+    saveCurrentReadPosition();
+    if (sentenceIdx >= ttsList.length - 1) {
+      stopTTS();
+      return;
+    }
+    idx = sentenceIdx + 1;
+    scheduleSpeech(idx, token, 70);
   };
 
   return utt;
+}
+
+function speakOne(sentenceIdx, token, attempt = 0, forceSystemVoice = false) {
+  if (!playing || token !== queueToken) return;
+  if (sentenceIdx >= ttsList.length) { stopTTS(); return; }
+  const item = ttsList[sentenceIdx];
+  if (!item) { stopTTS(); return; }
+  try {
+    currentUtterance = buildUtterance(item, sentenceIdx, token, attempt, forceSystemVoice);
+    synth.speak(currentUtterance);
+  } catch (_) {
+    currentUtterance = null;
+    stopTTS();
+  }
 }
 
 function queueSpeechFrom(startIdx) {
@@ -243,16 +302,17 @@ function queueSpeechFrom(startIdx) {
 
   queueToken += 1;
   const token = queueToken;
-  synth.cancel();
+  clearSpeechTimer();
+  const needsCancel = synth.speaking || synth.pending || synth.paused;
+  if (needsCancel) synth.cancel();
+  currentUtterance = null;
 
   idx = Math.max(0, Math.min(ttsList.length - 1, startIdx));
   highlightBlock(ttsList[idx].blockIdx);
   updatePos();
   updateMediaSession('playing');
 
-  for (let i = idx; i < ttsList.length; i += 1) {
-    synth.speak(buildUtterance(ttsList[i], i, token));
-  }
+  scheduleSpeech(idx, token, needsCancel ? 120 : 0);
 }
 
 function speak(i) {
@@ -261,6 +321,7 @@ function speak(i) {
 }
 
 function startTTS() {
+  if (!ttsList.length) { updatePos(); return; }
   ensureAudioCtx();
   primeVoices();
   playing = true;
@@ -275,6 +336,8 @@ function stopTTS() {
   saveCurrentReadPosition();
   playing = false;
   queueToken += 1;
+  clearSpeechTimer();
+  currentUtterance = null;
   setBtn('play');
   stopKeepAlive();
   releaseWakeLock();
@@ -288,7 +351,7 @@ function setBtn(s)   { document.getElementById('play-btn').textContent = s === '
 setInterval(() => {
   if (!playing) return;
   if (synth.paused) { synth.resume(); return; }
-  if (!synth.speaking && !synth.pending) speak(idx);
+  if (!synth.speaking && !synth.pending && !speechTimer && !currentUtterance) speak(idx);
 }, 1200);
 
 function jump(delta) {
