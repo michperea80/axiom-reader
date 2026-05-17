@@ -99,6 +99,7 @@ let currentUtterance = null;
 const SYSTEM_VOICE_VALUE = 'system';
 const SAVED_VOICE_KEY = 'axiom-reader-voice';
 const SAVED_RATE_KEY = 'axiom-reader-rate';
+const TTS_TEST_TEXT = 'AXIOM Reader voice test.';
 
 function saveCurrentReadPosition() {
   if (typeof saveReadPosition === 'function') saveReadPosition();
@@ -141,6 +142,12 @@ function getSelectedVoice() {
   const sel = document.getElementById('voice-sel');
   if (!sel || sel.value === SYSTEM_VOICE_VALUE) return null;
   return voices.find(v => voiceKey(v) === sel.value) || null;
+}
+
+function useSystemVoice(save = true) {
+  const sel = document.getElementById('voice-sel');
+  if (sel) sel.value = SYSTEM_VOICE_VALUE;
+  if (save) localStorage.setItem(SAVED_VOICE_KEY, SYSTEM_VOICE_VALUE);
 }
 
 function loadVoices() {
@@ -188,8 +195,7 @@ function loadVoices() {
     return;
   }
 
-  const defaultVoice = ordered.find(v => v.default) || ordered.find(isEnglishVoice);
-  sel.value = defaultVoice ? voiceKey(defaultVoice) : SYSTEM_VOICE_VALUE;
+  useSystemVoice(!!saved);
 }
 
 function primeVoices() {
@@ -234,8 +240,6 @@ function buildUtterance(item, sentenceIdx, token, attempt = 0, forceSystemVoice 
   if (selectedVoice) {
     utt.voice = selectedVoice;
     utt.lang = selectedVoice.lang;
-  } else if (navigator.language) {
-    utt.lang = navigator.language;
   }
 
   utt.onstart = () => {
@@ -347,6 +351,19 @@ function stopTTS() {
 
 function toggleTTS() { if (playing) stopTTS(); else startTTS(); }
 function setBtn(s)   { document.getElementById('play-btn').textContent = s === 'play' ? '▶' : '⏸'; }
+
+function resetTTSVoice() {
+  const wasPlaying = playing;
+  stopTTS();
+  useSystemVoice(true);
+  primeVoices();
+  setTimeout(() => {
+    synth.cancel();
+    const test = new SpeechSynthesisUtterance(TTS_TEST_TEXT);
+    synth.speak(test);
+    if (wasPlaying) setTimeout(startTTS, 600);
+  }, 100);
+}
 
 setInterval(() => {
   if (!playing) return;

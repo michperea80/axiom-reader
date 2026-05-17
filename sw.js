@@ -1,4 +1,4 @@
-const CACHE = 'axiom-v8';
+const CACHE = 'axiom-v9';
 const ASSETS = [
   './',
   './index.html',

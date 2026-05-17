@@ -670,6 +670,8 @@ document.getElementById('voice-sel').addEventListener('change', () => {
   if (playing) { stopTTS(); startTTS(); }
 });
 
+document.getElementById('voice-reset-btn').addEventListener('click', resetTTSVoice);
+
 document.getElementById('note-current-btn').addEventListener('click', () => {
   const blockIdx = ttsList[idx]?.blockIdx;
   if (blockIdx !== undefined) openNoteEditor(blockIdx);
