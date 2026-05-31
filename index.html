@@ -1,180 +1,345 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#00d4ff" />
+  <meta name="theme-color" content="#46F5E0" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; media-src blob:; worker-src 'self'">
+    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; worker-src 'self'">
+  
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="stylesheet" href="./css/style.css" />
   <link rel="stylesheet" href="./css/library.css" />
-  <title>AXIOM Reader</title>
+  <title>AXIOM // Reader</title>
 
+  <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="logo-sym" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="38" fill="none" stroke="currentColor" stroke-width="5"
+        style="filter:drop-shadow(0 0 10px #46F5E0)"/>
+      <path d="M 120 22 A 80 80 0 0 1 177 150"
+        fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"/>
+      <path d="M 157 168 A 80 80 0 0 1 20 100 A 80 80 0 0 1 45 37"
+        fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"/>
+      <polygon points="120,22 108,10 135,8" fill="currentColor"/>
+      <polygon points="45,37 56,48 35,52" fill="currentColor"/>
+    </symbol>
+  </svg>
 </head>
 <body>
 
-<div id="screen-library" class="screen active">
-  <div class="topbar">
-    <div class="topbar-left">
-      <span class="logo">AXIOM // Reader</span>
-    </div>
-  </div>
-  <div id="lib-body">
-    <div id="lib-browse-section">
-      <button id="open-folder-btn" class="open-folder-btn">&#x1F4C2; Open Folder</button>
-      <button id="open-file-btn" class="open-file-btn">&#x1F4C4; Open File</button>
-      <button id="backup-data-btn" class="open-file-btn">Backup data</button>
-      <button id="restore-data-btn" class="open-file-btn">Restore data</button>
-      <button id="export-pronunciation-btn" class="open-file-btn">Export pronunciation</button>
-      <button id="import-pronunciation-btn" class="open-file-btn">Import pronunciation</button>
-    </div>
-    <div id="lib-recents-section">
-      <div class="lib-section-label">Recent Files</div>
-      <div id="lib-recents-list"></div>
-    </div>
-  </div>
-</div>
-
-<div id="screen-browse" class="screen">
-  <div class="topbar">
-    <div class="topbar-left">
-      <button class="topbar-back" id="browse-back-btn">&#x2039;</button>
-      <span class="logo" id="browse-folder-name">Folder</span>
-    </div>
-  </div>
-  <div id="browse-file-list"></div>
-</div>
-
-<div id="screen-reader" class="screen">
-  <div class="topbar">
-    <div class="topbar-left">
-      <button class="topbar-back" id="reader-back-btn">&#x2039;</button>
-      <span class="logo">AXIOM</span>
-    </div>
-    <span id="file-name">No file loaded</span>
-  </div>
-  <div id="controls">
-    <div id="transport">
-      <button class="t-btn" id="btn-b5">&#x23EE;</button>
-      <button class="t-btn" id="btn-prev">&#x25C0;</button>
-      <button id="play-btn">&#x25B6;</button>
-      <button class="t-btn" id="btn-next">&#x25B6;</button>
-      <button class="t-btn" id="btn-f5">&#x23ED;</button>
-    </div>
-    <div id="bottom-controls">
-      <span class="ctrl-label">Speed</span>
-      <input type="range" id="rate-slider" min="0.5" max="2.0" step="0.1" value="0.95" />
-      <span class="ctrl-val" id="rate-val">0.95&#xD7;</span>
-      <select id="voice-sel"></select>
-      <button class="open-btn" id="voice-reset-btn">Reset voice</button>
-      <span class="ctrl-label">Status</span>
-      <select id="status-sel" aria-label="Review status">
-        <option value="unread">Unread</option>
-        <option value="in_review">In Review</option>
-        <option value="needs_edits">Needs Edits</option>
-        <option value="reviewed">Reviewed</option>
-      </select>
-      <button class="open-btn" id="search-toggle-btn">Search</button>
-      <button class="open-btn" id="notes-panel-btn">Notes</button>
-      <select id="highlight-kind-sel" aria-label="Highlight label">
-        <option value="important">Important</option>
-        <option value="needs_edit">Needs Edit</option>
-        <option value="fact_check">Fact-check</option>
-        <option value="continuity">Continuity</option>
-      </select>
-      <button class="open-btn" id="highlight-current-btn">Highlight</button>
-      <button class="open-btn" id="note-current-btn">Note</button>
-      <button class="open-btn" id="save-notes-btn">Save notes</button>
-      <button class="open-btn" id="open-btn">Open file</button>
-      <span id="pos-label">&#x2014; / &#x2014;</span>
-    </div>
-    <div id="search-bar" aria-hidden="true">
-      <input id="search-input" type="search" autocomplete="off" placeholder="Search current document" />
-      <span id="search-count">0 / 0</span>
-      <button class="search-nav-btn" id="search-prev-btn" title="Previous match">&#x25C0;</button>
-      <button class="search-nav-btn" id="search-next-btn" title="Next match">&#x25B6;</button>
-      <button class="search-nav-btn" id="search-clear-btn" title="Clear search">&#x2715;</button>
-    </div>
-  </div>
-  <div id="reader-main">
-    <div id="load-screen">
-      <div class="load-icon">&#x1F4C4;</div>
-      <h2>Open a File</h2>
-      <p>Select any .md, .txt, or text-based .pdf file from your library, or open one directly. The info card and revision notes are displayed but not read aloud.</p>
-      <button class="pick-btn" id="load-pick-btn">Select File</button>
-    </div>
-    <div id="doc-view" style="display:none">
-      <div id="doc-render"></div>
-    </div>
-  </div>
-</div>
-
-<div id="notes-panel" class="notes-panel" aria-hidden="true">
-  <aside class="notes-drawer" aria-labelledby="notes-panel-title">
-    <div class="notes-header">
-      <div>
-        <div class="note-kicker">Current File</div>
-        <h2 id="notes-panel-title">Review Notes</h2>
+  <!-- Main Terminal Layout -->
+  <main class="main-content">
+    <div class="terminal-grid">
+      
+      <!-- Left Column: Dynamic Viewports -->
+      <div class="col-main">
+        
+        <!-- Screen: Library -->
+        <div id="screen-library" class="screen active">
+          <!-- Sub-header metadata status -->
+          <div class="status-bar">
+            <div class="status-bar-title" style="display:flex; align-items:center; gap:12px">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:24px; height:24px; color:var(--primary)">
+                <use href="#logo-sym"/>
+              </svg>
+              <div>
+                <p>SYSTEM STATUS: CONNECTED</p>
+                <h1 class="ui-chrome">AXIOM_READER // <span style="color:var(--primary); font-style:italic">SC_32</span></h1>
+              </div>
+            </div>
+            <div class="status-bar-meta">
+              <div>LOCATION: SECTOR_07</div>
+              <div>UPTIME: 428:12:09</div>
+            </div>
+          </div>
+          
+          <!-- Library Body content -->
+          <div id="lib-body">
+            <!-- Database & utility action Buttons -->
+            <div id="lib-browse-section">
+              <button id="open-folder-btn" class="open-folder-btn">📁 Open Folder</button>
+              <button id="open-file-btn" class="open-file-btn">📄 Open File</button>
+              <button id="backup-data-btn" class="open-file-btn">Backup data</button>
+              <button id="restore-data-btn" class="open-file-btn">Restore data</button>
+              <button id="export-pronunciation-btn" class="open-file-btn">Export pronunciation</button>
+              <button id="import-pronunciation-btn" class="open-file-btn">Import pronunciation</button>
+            </div>
+            
+            <!-- Recent archives -->
+            <div class="lib-section" id="lib-recents-section">
+              <div class="db-header">
+                <h3>RECENT_ARCHIVES.DB</h3>
+                <div class="db-divider"></div>
+                <span class="db-header-count" id="recents-count">RECORDS: 00</span>
+              </div>
+              <div class="recent-list" id="lib-recents-list"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Screen: Browse -->
+        <div id="screen-browse" class="screen">
+          <div class="status-bar">
+            <div class="status-bar-title">
+              <p>FS_BROWSER: ACTIVE</p>
+              <h1 class="ui-chrome" style="display:flex; align-items:center; gap:8px">
+                <button class="topbar-back icon-btn material-symbols-outlined" id="browse-back-btn" title="Back to Library">arrow_back</button>
+                <span id="browse-folder-name">Folder</span>
+              </h1>
+            </div>
+            <div class="status-bar-meta">
+              <div>LOCATION: REMOTE_FS</div>
+            </div>
+          </div>
+          <div id="browse-file-list"></div>
+        </div>
+        
+        <!-- Screen: Reader -->
+        <div id="screen-reader" class="screen">
+          <div class="status-bar">
+            <div class="status-bar-title">
+              <p>PARSER: ACTIVE // SYNTHESIS: READY</p>
+              <h1 class="ui-chrome" style="display:flex; align-items:center; gap:8px; max-width: 100%">
+                <button class="topbar-back icon-btn material-symbols-outlined" id="reader-back-btn" title="Back to Library">arrow_back</button>
+                <span id="file-name" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap">No file loaded</span>
+              </h1>
+            </div>
+            <div class="status-bar-meta">
+              <div>FORMAT: CANON_MARKDOWN</div>
+            </div>
+          </div>
+          
+          <div id="reader-main">
+            <!-- Load document prompt screen -->
+            <div id="load-screen">
+              <div class="load-icon">📄</div>
+              <h2>LOAD CANON ARCHIVE</h2>
+              <p>Select any plain text, Markdown (.md), or text-based PDF document to begin reading.</p>
+              <button class="pick-btn" id="load-pick-btn">Select File</button>
+            </div>
+            
+            <!-- Rendered document scroll container -->
+            <div id="doc-view" style="display:none">
+              <div class="reader-narrow-view">
+                <div id="doc-render"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
       </div>
-      <button class="notes-close" id="notes-close-btn" title="Close notes">&#x2715;</button>
-    </div>
-    <div class="notes-meta">
-      <span id="notes-file-name">No file loaded</span>
-      <span id="notes-status-pill">Unread</span>
-    </div>
-    <div id="review-summary" class="review-summary">
-      <span>0 notes</span>
-      <span>0 highlights</span>
-      <span>0 tasks</span>
-    </div>
-    <div class="notes-actions-top">
-      <select id="export-filter-sel" aria-label="Export filter">
-        <option value="all">Export all</option>
-        <option value="notes">Notes only</option>
-        <option value="highlights">All highlights</option>
-        <option value="highlight:important">Important highlights</option>
-        <option value="highlight:needs_edit">Needs Edit highlights</option>
-        <option value="highlight:fact_check">Fact-check highlights</option>
-        <option value="highlight:continuity">Continuity highlights</option>
-      </select>
-      <button class="open-btn" id="notes-export-btn">Save notes</button>
-    </div>
-    <div class="notes-subhead">Notes</div>
-    <div id="notes-list"></div>
-    <div class="notes-subhead">Highlights</div>
-    <div id="highlights-list"></div>
-  </aside>
-</div>
+      
+      <!-- Right Column: Persistent Vocal & Review Sidebar Control Panel -->
+      <div class="col-control">
+        <div class="glow-card glow-active" style="min-height:100%">
+          <div class="glow-card-header">
+            <div class="pulse-dot"></div>
+            <h3>VOCAL_SYNTHESIS_CONTROL</h3>
+          </div>
+          
+          <!-- Audio visualizer panel -->
+          <div class="panel-section">
+            <span class="panel-section-label">SYNTHESIS_SPECTRUM_WAVEFORM</span>
+            <div class="visualizer-pane" id="visualizer">
+              <div class="visualizer-bar"></div>
+              <div class="visualizer-bar"></div>
+              <div class="visualizer-bar glow-cyan"></div>
+              <div class="visualizer-bar"></div>
+              <div class="visualizer-bar"></div>
+              <div class="visualizer-bar glow-cyan"></div>
+              <div class="visualizer-bar"></div>
+              <div class="visualizer-bar"></div>
+              <div class="visualizer-bar glow-cyan"></div>
+              <div class="visualizer-bar"></div>
+              <div class="visualizer-bar"></div>
+              <div class="visualizer-bar glow-cyan"></div>
+            </div>
+          </div>
+          
+          <!-- Search Panel (shown when search toggled) -->
+          <div id="search-bar" class="panel-section ui-chrome" aria-hidden="true">
+            <span class="panel-section-label">DOCUMENT_SEARCH_ENGINE</span>
+            <div class="search-input-row">
+              <input id="search-input" type="search" autocomplete="off" placeholder="Search current document" />
+              <span id="search-count">0 / 0</span>
+            </div>
+            <div class="search-controls-row">
+              <button class="search-nav-btn" id="search-prev-btn" title="Previous match">&#x25C0;</button>
+              <button class="search-nav-btn" id="search-next-btn" title="Next match">&#x25B6;</button>
+              <button class="search-nav-btn" id="search-clear-btn" title="Clear search">&#x2715;</button>
+            </div>
+          </div>
+          
+          <!-- Voice selector panel -->
+          <div class="panel-section">
+            <span class="panel-section-label">ACTIVE_VOICE_MODULE</span>
+            <div class="voice-control-row">
+              <select id="voice-sel" class="voice-select-dropdown ui-chrome">
+                <option value="">LOADING VOICE MODULES...</option>
+              </select>
+              <button class="open-btn ui-chrome" id="voice-reset-btn" style="padding: 12px 14px">Reset</button>
+            </div>
+          </div>
+          
+          <!-- Settings sliders panel -->
+          <div class="panel-section">
+            <!-- Playback Rate Slider -->
+            <div class="slider-group">
+              <div class="slider-header">
+                <span>PLAYBACK_SPEED</span>
+                <span id="rate-val" class="value">1.0×</span>
+              </div>
+              <div class="slider-track-container">
+                <input type="range" id="rate-slider" class="range-slider" min="0.5" max="2.0" step="0.1" value="0.95" />
+              </div>
+            </div>
+            
+            <!-- Playback Pitch Slider (custom implemented) -->
+            <div class="slider-group">
+              <div class="slider-header">
+                <span>FREQUENCY_PITCH</span>
+                <span id="pitch-val" class="value">1.0×</span>
+              </div>
+              <div class="slider-track-container">
+                <input type="range" id="pitch-slider" class="range-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
+              </div>
+            </div>
+          </div>
 
-<div id="note-modal" class="note-modal" aria-hidden="true">
-  <div class="note-dialog" role="dialog" aria-modal="true" aria-labelledby="note-title">
-    <div class="note-kicker">Review Note</div>
-    <h2 id="note-title">Section Note</h2>
-    <blockquote id="note-section-excerpt"></blockquote>
-    <textarea id="note-text" rows="7" placeholder="What needs editing here?"></textarea>
-    <div class="note-actions">
-      <button class="note-delete" id="note-delete-btn">Delete</button>
-      <button class="note-cancel" id="note-cancel-btn">Cancel</button>
-      <button class="note-save" id="note-save-btn">Save</button>
+          <!-- Document Review status panel -->
+          <div class="panel-section">
+            <span class="panel-section-label">ARCHIVE_REVIEW_STATUS</span>
+            <div class="control-dropdown-grid">
+              <select id="status-sel" class="ui-chrome" aria-label="Review status">
+                <option value="unread">Unread</option>
+                <option value="in_review">In Review</option>
+                <option value="needs_edits">Needs Edits</option>
+                <option value="reviewed">Reviewed</option>
+              </select>
+              <button class="open-btn ui-chrome" id="search-toggle-btn">Search</button>
+            </div>
+          </div>
+
+          <!-- Highlight and Note Action buttons panel -->
+          <div class="panel-section">
+            <span class="panel-section-label">MARKUP_HIGHLIGHTS_AND_NOTES</span>
+            <div class="slider-group" style="margin-bottom:10px">
+              <select id="highlight-kind-sel" class="voice-select-dropdown ui-chrome" aria-label="Highlight label">
+                <option value="important">Important</option>
+                <option value="needs_edit">Needs Edit</option>
+                <option value="fact_check">Fact-check</option>
+                <option value="continuity">Continuity</option>
+              </select>
+            </div>
+            <div class="control-actions-grid">
+              <button class="open-btn ui-chrome" id="highlight-current-btn">Highlight</button>
+              <button class="open-btn ui-chrome" id="note-current-btn">Add Note</button>
+              <button class="open-btn ui-chrome" id="notes-panel-btn">Open Notes</button>
+              <button class="open-btn ui-chrome" id="save-notes-btn">Save Notes</button>
+            </div>
+          </div>
+          
+          <!-- Playback Actions panel -->
+          <div class="panel-section">
+            <span class="panel-section-label">PLAYBACK_CONTROLS</span>
+            
+            <!-- Main transport buttons -->
+            <div class="playback-controls">
+              <button class="playback-btn-text material-symbols-outlined" id="btn-prev" title="Previous Sentence">skip_previous</button>
+              <button class="playback-btn-round" id="play-btn" title="Toggle Speech">
+                <span class="material-symbols-outlined" style="font-size:32px; font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+              <button class="playback-btn-text material-symbols-outlined" id="btn-next" title="Next Sentence">skip_next</button>
+            </div>
+            
+            <!-- Secondary seek buttons -->
+            <div class="playback-controls" style="margin-top:16px; gap:20px">
+              <button class="icon-btn material-symbols-outlined" id="btn-b5" title="Rewind 5 Sentences" style="font-size:20px">fast_rewind</button>
+              <button class="open-btn ui-chrome" id="open-btn" style="font-size:10px; border:1px solid var(--border); padding:6px 12px; color:var(--text); cursor:pointer">OPEN FILE</button>
+              <button class="icon-btn material-symbols-outlined" id="btn-f5" title="Forward 5 Sentences" style="font-size:20px">fast_forward</button>
+            </div>
+          </div>
+          
+          <!-- Status labels -->
+          <div class="panel-section" style="margin-bottom:0; display:flex; justify-content:space-between; align-items:center; font-family:var(--font-ui); font-size:10px; color:var(--text-subtle)">
+            <span>TRACKING_INDEX</span>
+            <span id="pos-label" style="color:var(--primary)">— / —</span>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </main>
+
+  <!-- Sliding notes list panel drawer overlay -->
+  <div id="notes-panel" class="notes-panel" aria-hidden="true">
+    <aside class="notes-drawer" aria-labelledby="notes-panel-title">
+      <div class="notes-header">
+        <div>
+          <div class="note-kicker" style="color:var(--primary)">Current File</div>
+          <h2 id="notes-panel-title">Review Notes</h2>
+        </div>
+        <button class="notes-close" id="notes-close-btn" title="Close notes">&#x2715;</button>
+      </div>
+      <div class="notes-meta">
+        <span id="notes-file-name">No file loaded</span>
+        <span id="notes-status-pill" class="status-pill status-unread">Unread</span>
+      </div>
+      <div id="review-summary" class="review-summary">
+        <span>0 notes</span>
+        <span>0 highlights</span>
+        <span>0 tasks</span>
+      </div>
+      <div class="notes-actions-top">
+        <select id="export-filter-sel" aria-label="Export filter">
+          <option value="all">Export all</option>
+          <option value="notes">Notes only</option>
+          <option value="highlights">All highlights</option>
+          <option value="highlight:important">Important highlights</option>
+          <option value="highlight:needs_edit">Needs Edit highlights</option>
+          <option value="highlight:fact_check">Fact-check highlights</option>
+          <option value="highlight:continuity">Continuity highlights</option>
+        </select>
+        <button class="open-btn" id="notes-export-btn">Save notes</button>
+      </div>
+      <div class="notes-subhead">Notes</div>
+      <div id="notes-list"></div>
+      <div class="notes-subhead">Highlights</div>
+      <div id="highlights-list"></div>
+    </aside>
+  </div>
+
+  <!-- Note modal editing popup dialog -->
+  <div id="note-modal" class="note-modal" aria-hidden="true">
+    <div class="note-dialog" role="dialog" aria-modal="true" aria-labelledby="note-title">
+      <div class="note-kicker">Review Note</div>
+      <h2 id="note-title">Section Note</h2>
+      <blockquote id="note-section-excerpt"></blockquote>
+      <textarea id="note-text" rows="7" placeholder="What needs editing here?"></textarea>
+      <div class="note-actions">
+        <button class="note-delete" id="note-delete-btn">Delete</button>
+        <button class="note-cancel" id="note-cancel-btn">Cancel</button>
+        <button class="note-save" id="note-save-btn">Save</button>
+      </div>
     </div>
   </div>
-</div>
 
-<input type="file" id="file-input" accept=".md,.txt,.pdf" />
-<input type="file" id="dir-input" webkitdirectory />
-<input type="file" id="restore-input" accept=".json,application/json" />
-<input type="file" id="pronunciation-input" accept=".json,application/json" />
+  <!-- Hidden system file inputs for PWA functionalities -->
+  <input type="file" id="file-input" accept=".md,.txt,.pdf" />
+  <input type="file" id="dir-input" webkitdirectory />
+  <input type="file" id="restore-input" accept=".json,application/json" />
+  <input type="file" id="pronunciation-input" accept=".json,application/json" />
 
-<script src="./js/parser.js"></script>
-<script src="./js/tts.js"></script>
-<script src="./js/library.js"></script>
-<script src="./js/pdf.js"></script>
-<script src="./js/app.js"></script>
+  <!-- Script Libraries -->
+  <script src="./js/parser.js"></script>
+  <script src="./js/tts.js"></script>
+  <script src="./js/library.js"></script>
+  <script src="./js/pdf.js"></script>
+  <script src="./js/app.js"></script>
 
 </body>
 </html>

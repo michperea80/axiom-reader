@@ -95,6 +95,8 @@ let playing = false;
 let queueToken = 0;
 let speechTimer = null;
 let currentUtterance = null;
+let visualizerAnimationId = null;
+let visualizerSpike = 0;
 
 const SYSTEM_VOICE_VALUE = 'system';
 const SAVED_VOICE_KEY = 'axiom-reader-voice';
@@ -119,6 +121,17 @@ function restoreTTSSettings() {
     const clamped = Math.max(min, Math.min(max, savedRate));
     slider.value = clamped.toFixed(1);
     if (label) label.textContent = clamped.toFixed(1) + '\xD7';
+  }
+
+  const pitchSlider = document.getElementById('pitch-slider');
+  const pitchLabel = document.getElementById('pitch-val');
+  const savedPitch = parseFloat(localStorage.getItem('axiom-reader-pitch'));
+  if (pitchSlider && Number.isFinite(savedPitch)) {
+    const min = parseFloat(pitchSlider.min);
+    const max = parseFloat(pitchSlider.max);
+    const clamped = Math.max(min, Math.min(max, savedPitch));
+    pitchSlider.value = clamped.toFixed(1);
+    if (pitchLabel) pitchLabel.textContent = clamped.toFixed(1) + '\xD7';
   }
 }
 
@@ -232,11 +245,18 @@ function buildUtterance(item, sentenceIdx, token, attempt = 0, forceSystemVoice 
   const utt = new SpeechSynthesisUtterance(item.speechText || item.text);
   const selectedVoice = forceSystemVoice ? null : getSelectedVoice();
   const rate = parseFloat(document.getElementById('rate-slider').value);
+  const pitchSlider = document.getElementById('pitch-slider');
+  const pitch = pitchSlider ? parseFloat(pitchSlider.value) : 1.0;
   let started = false;
 
   utt.rate = Number.isFinite(rate) ? rate : 0.95;
-  utt.pitch = 1;
+  utt.pitch = Number.isFinite(pitch) ? pitch : 1.0;
   utt.volume = 1;
+  utt.onboundary = (event) => {
+    if (event.name === 'word') {
+      visualizerSpike = 1.0;
+    }
+  };
   if (selectedVoice) {
     utt.voice = selectedVoice;
     utt.lang = selectedVoice.lang;
@@ -324,6 +344,49 @@ function speak(i) {
   queueSpeechFrom(i);
 }
 
+function updateVisualizerAnimation() {
+  if (!playing) {
+    visualizerAnimationId = null;
+    return;
+  }
+
+  const viz = document.getElementById('visualizer');
+  if (viz) {
+    const bars = viz.querySelectorAll('.visualizer-bar');
+    const time = Date.now() * 0.005;
+    const isSpeaking = synth.speaking && !synth.paused;
+    
+    // Decay visualizerSpike by 8% per frame
+    visualizerSpike *= 0.92;
+
+    bars.forEach((bar, index) => {
+      let height = 15;
+
+      if (isSpeaking) {
+        // Base sine wave fluctuation
+        const wave1 = Math.sin(time * 1.5 + index * 0.6) * 15;
+        const wave2 = Math.cos(time * 2.8 - index * 0.4) * 10;
+        
+        // Spike effect from word boundaries
+        const spike = visualizerSpike * (Math.sin(index * 0.9) + 1.2) * 35;
+        
+        // Minor background noise
+        const noise = (Math.random() - 0.5) * 8;
+
+        height = 30 + wave1 + wave2 + spike + noise;
+        height = Math.max(10, Math.min(95, height));
+      } else {
+        // Quiet baseline vibration when between sentences or paused
+        height = 12 + Math.sin(time * 3 + index) * 3 + (Math.random() - 0.5) * 2;
+      }
+
+      bar.style.height = `${height}%`;
+    });
+  }
+
+  visualizerAnimationId = requestAnimationFrame(updateVisualizerAnimation);
+}
+
 function startTTS() {
   if (!ttsList.length) { updatePos(); return; }
   ensureAudioCtx();
@@ -333,6 +396,11 @@ function startTTS() {
   startKeepAlive();
   requestWakeLock();
   updateMediaSession('playing');
+  const viz = document.getElementById('visualizer');
+  if (viz) viz.classList.add('animating');
+  if (!visualizerAnimationId) {
+    visualizerAnimationId = requestAnimationFrame(updateVisualizerAnimation);
+  }
   speak(idx);
 }
 
@@ -346,11 +414,32 @@ function stopTTS() {
   stopKeepAlive();
   releaseWakeLock();
   updateMediaSession('paused');
+  const viz = document.getElementById('visualizer');
+  if (viz) viz.classList.remove('animating');
+  if (visualizerAnimationId) {
+    cancelAnimationFrame(visualizerAnimationId);
+    visualizerAnimationId = null;
+  }
+  // Reset visualizer bars to resting baseline heights
+  if (viz) {
+    viz.querySelectorAll('.visualizer-bar').forEach(bar => {
+      bar.style.height = '15%';
+    });
+  }
   synth.cancel();
 }
 
 function toggleTTS() { if (playing) stopTTS(); else startTTS(); }
-function setBtn(s)   { document.getElementById('play-btn').textContent = s === 'play' ? '▶' : '⏸'; }
+function setBtn(s) {
+  const btn = document.getElementById('play-btn');
+  if (!btn) return;
+  const icon = btn.querySelector('.material-symbols-outlined');
+  if (icon) {
+    icon.textContent = s === 'play' ? 'play_arrow' : 'pause';
+  } else {
+    btn.textContent = s === 'play' ? '▶' : '⏸';
+  }
+}
 
 function resetTTSVoice() {
   const wasPlaying = playing;
@@ -379,10 +468,27 @@ function jump(delta) {
   saveCurrentReadPosition();
 }
 
+function isBlockVisible(el, container) {
+  if (!el || !container) return false;
+  const elRect = el.getBoundingClientRect();
+  const conRect = container.getBoundingClientRect();
+  return (elRect.top >= conRect.top + 10 && elRect.bottom <= conRect.bottom - 10);
+}
+
 function highlightBlock(blockIdx) {
   document.querySelectorAll('.reading-block').forEach(el => el.classList.remove('reading-block'));
   const el = document.querySelector(`[data-bid="${blockIdx}"]`);
-  if (el) { el.classList.add('reading-block'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  if (el) {
+    el.classList.add('reading-block');
+    const container = document.getElementById('doc-view');
+    if (container) {
+      if (!isBlockVisible(el, container)) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    } else {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
 }
 
 function updatePos() {

@@ -295,22 +295,34 @@ async function renderLibraryScreen() {
   } else {
     const noteCounts = await noteCountsByFile();
     const highlightCounts = await highlightCountsByFile();
-    recentsEl.innerHTML = recents.map(f => `
+    recentsEl.innerHTML = recents.map((f, index) => {
+      const displayIndex = String(index + 1).padStart(2, '0');
+      return `
       <div class="recent-row">
-        <div class="recent-info" data-recent-id="${f.id}">
-          <span class="recent-name">${escHtml(f.name)}</span>
-          <span class="recent-meta">
-            <span class="recent-status status-${normalizeReviewStatus(f.reviewStatus)}">${statusLabel(f.reviewStatus)}</span>
-            <span class="recent-time">${timeAgo(f.openedAt)}</span>
-            <span>${noteCounts[f.id] || 0} notes</span>
-            <span>${highlightCounts[f.id] || 0} highlights</span>
-            <span>${readPositionLabel(f)}</span>
-          </span>
+        <div class="recent-row-left recent-info" data-recent-id="${f.id}">
+          <span class="recent-num">${displayIndex}</span>
+          <div class="recent-info-block">
+            <p class="recent-name">${escHtml(f.name)}</p>
+            <div class="recent-meta">
+              <span class="recent-status status-${normalizeReviewStatus(f.reviewStatus)}">${statusLabel(f.reviewStatus)}</span>
+              <span class="recent-time">${timeAgo(f.openedAt)}</span>
+              <span>${noteCounts[f.id] || 0} notes</span>
+              <span>${highlightCounts[f.id] || 0} highlights</span>
+              <span>${readPositionLabel(f)}</span>
+            </div>
+          </div>
         </div>
-        <button class="recent-play" data-recent-id="${f.id}" title="Open">&#x25B6;</button>
-        <button class="recent-delete" data-recent-id="${f.id}" title="Remove">&#x2715;</button>
+        <div class="recent-row-right">
+          <button class="recent-action-btn recent-play" data-recent-id="${f.id}" title="Open">
+            <span class="material-symbols-outlined" style="font-size: 18px">play_arrow</span>
+          </button>
+          <button class="recent-action-btn btn-delete recent-delete" data-recent-id="${f.id}" title="Remove">
+            <span class="material-symbols-outlined" style="font-size: 18px">delete</span>
+          </button>
+        </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 }
 

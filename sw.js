@@ -1,4 +1,4 @@
-const CACHE = 'axiom-v9';
+const CACHE = 'axiom-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -23,11 +23,25 @@ self.addEventListener('install', e =>
 self.addEventListener('activate', e =>
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE && k !== 'axiom-fonts').map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   )
 );
 
-self.addEventListener('fetch', e =>
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)))
-);
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
+    e.respondWith(
+      caches.open('axiom-fonts').then(cache =>
+        cache.match(e.request).then(cachedResponse =>
+          cachedResponse || fetch(e.request).then(networkResponse => {
+            cache.put(e.request, networkResponse.clone());
+            return networkResponse;
+          })
+        )
+      )
+    );
+    return;
+  }
+  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+});

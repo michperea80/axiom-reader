@@ -665,6 +665,13 @@ document.getElementById('rate-slider').addEventListener('input', function () {
   if (playing) { stopTTS(); startTTS(); }
 });
 
+document.getElementById('pitch-slider').addEventListener('input', function () {
+  const pitch = parseFloat(this.value).toFixed(1);
+  document.getElementById('pitch-val').textContent = pitch + '\xD7';
+  localStorage.setItem('axiom-reader-pitch', pitch);
+  if (playing) { stopTTS(); startTTS(); }
+});
+
 document.getElementById('voice-sel').addEventListener('change', () => {
   localStorage.setItem(SAVED_VOICE_KEY, document.getElementById('voice-sel').value);
   if (playing) { stopTTS(); startTTS(); }
