@@ -495,3 +495,81 @@ function updatePos() {
   document.getElementById('pos-label').textContent =
     ttsList.length ? `${idx + 1} / ${ttsList.length}` : '— / —';
 }
+
+function updatePlaybackControlsState() {
+  const hasFile = (ttsList && ttsList.length > 0 && document.getElementById('screen-reader').classList.contains('active'));
+  
+  const controls = [
+    'play-btn', 'btn-prev', 'btn-next', 'btn-b5', 'btn-f5',
+    'rate-slider', 'pitch-slider', 'status-sel',
+    'highlight-current-btn', 'note-current-btn', 'notes-panel-btn', 'save-notes-btn'
+  ];
+  
+  controls.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.disabled = !hasFile;
+      if (!hasFile) {
+        el.classList.add('disabled-control');
+      } else {
+        el.classList.remove('disabled-control');
+      }
+    }
+  });
+}
+
+function previewTTSVoice() {
+  const wasPlaying = playing;
+  stopTTS();
+  
+  setTimeout(() => {
+    ensureAudioCtx();
+    const testText = "AXIOM voice system online.";
+    const utt = new SpeechSynthesisUtterance(testText);
+    const selectedVoice = getSelectedVoice();
+    const rate = parseFloat(document.getElementById('rate-slider').value);
+    const pitchSlider = document.getElementById('pitch-slider');
+    const pitch = pitchSlider ? parseFloat(pitchSlider.value) : 1.0;
+    
+    utt.rate = Number.isFinite(rate) ? rate : 0.95;
+    utt.pitch = Number.isFinite(pitch) ? pitch : 1.0;
+    utt.volume = 1;
+    if (selectedVoice) {
+      utt.voice = selectedVoice;
+      utt.lang = selectedVoice.lang;
+    }
+    
+    const viz = document.getElementById('visualizer');
+    if (viz) viz.classList.add('animating');
+    if (!visualizerAnimationId) {
+      playing = true;
+      visualizerAnimationId = requestAnimationFrame(updateVisualizerAnimation);
+    }
+    
+    utt.onboundary = (event) => {
+      if (event.name === 'word') {
+        visualizerSpike = 1.0;
+      }
+    };
+    
+    const endHandler = () => {
+      playing = false;
+      if (visualizerAnimationId) {
+        cancelAnimationFrame(visualizerAnimationId);
+        visualizerAnimationId = null;
+      }
+      if (viz) viz.classList.remove('animating');
+      viz.querySelectorAll('.visualizer-bar').forEach(bar => {
+        bar.style.height = '15%';
+      });
+      if (wasPlaying) {
+        setTimeout(startTTS, 300);
+      }
+    };
+    
+    utt.onend = endHandler;
+    utt.onerror = endHandler;
+    
+    synth.speak(utt);
+  }, 100);
+}

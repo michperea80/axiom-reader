@@ -11,6 +11,9 @@ let activeSearchIdx = -1;
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
+  if (typeof updatePlaybackControlsState === 'function') {
+    updatePlaybackControlsState();
+  }
 }
 
 async function readSupportedFile(file) {
@@ -678,6 +681,7 @@ document.getElementById('voice-sel').addEventListener('change', () => {
 });
 
 document.getElementById('voice-reset-btn').addEventListener('click', resetTTSVoice);
+document.getElementById('voice-preview-btn').addEventListener('click', previewTTSVoice);
 
 document.getElementById('note-current-btn').addEventListener('click', () => {
   const blockIdx = ttsList[idx]?.blockIdx;

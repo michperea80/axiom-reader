@@ -1131,6 +1131,12 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   }
 }
 
+.disabled-control {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+
 /* Reduced Motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
