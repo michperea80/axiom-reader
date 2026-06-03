@@ -167,6 +167,8 @@ function loadVoices() {
   const all = synth.getVoices();
   const sel  = document.getElementById('voice-sel');
   if (!sel) return;
+  // Prevent Chrome from wiping voices when synth.cancel() temporarily returns empty voices
+  if (all.length === 0 && voices && voices.length > 0) return;
 
   const unique = [];
   const seen = new Set();
@@ -519,6 +521,7 @@ function updatePlaybackControlsState() {
 }
 
 function previewTTSVoice() {
+  const selectedVoice = getSelectedVoice();
   const wasPlaying = playing;
   stopTTS();
   
@@ -526,7 +529,6 @@ function previewTTSVoice() {
     ensureAudioCtx();
     const testText = "AXIOM voice system online.";
     const utt = new SpeechSynthesisUtterance(testText);
-    const selectedVoice = getSelectedVoice();
     const rate = parseFloat(document.getElementById('rate-slider').value);
     const pitchSlider = document.getElementById('pitch-slider');
     const pitch = pitchSlider ? parseFloat(pitchSlider.value) : 1.0;
