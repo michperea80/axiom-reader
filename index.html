@@ -331,49 +331,67 @@
     </div>
   </div>
 
-  <!-- TTS Settings Modal -->
+  <!-- TTS Settings Panel — 3-Column Nabu-style Layout -->
   <div id="tts-settings-modal" class="note-modal" aria-hidden="true">
-    <div class="note-dialog" role="dialog" aria-modal="true" aria-labelledby="tts-settings-title" style="max-width: 420px;">
-      <div class="note-kicker">TTS CONFIGURATION</div>
-      <h2 id="tts-settings-title" style="color: var(--text-bright);">Voice Engine Settings</h2>
-      
-      <div class="settings-form" style="margin-top: 18px; text-align: left;">
-        <!-- Mode Selection -->
-        <div class="settings-group" style="margin-bottom: 18px;">
-          <label style="display: block; font-family: var(--font-ui); font-weight: 700; margin-bottom: 8px; font-size: 9px; letter-spacing: 0.15em; color: var(--primary);">TTS CONNECTION MODE</label>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; color: var(--text-bright);">
-              <input type="radio" name="tts-mode" value="offline" checked style="accent-color: var(--primary);" />
-              Offline Mode (Built-in Voices)
-            </label>
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; color: var(--text-bright);">
-              <input type="radio" name="tts-mode" value="proxy" style="accent-color: var(--primary);" />
-              Enhanced Voice Mode (Protected Cloud Proxy)
-            </label>
+    <div class="tts-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="tts-settings-title">
+      <button class="tts-settings-close" id="tts-settings-close-btn" title="Close">&times;</button>
+
+      <div class="tts-settings-grid">
+        <!-- Column 1: Vocal Synthesis Engine -->
+        <div class="tts-column">
+          <div class="tts-column-header">
+            <span class="tts-column-number">1.</span>
+            <span>VOCAL SYNTHESIS ENGINE</span>
+          </div>
+          <div class="tts-engine-cards" id="tts-engine-cards">
+            <!-- Populated by JavaScript -->
           </div>
         </div>
-        
-        <!-- Proxy Settings (shown only when proxy chosen) -->
-        <div id="proxy-settings-fields" style="display: none; border-top: 1px dashed var(--border); padding-top: 16px; margin-top: 14px;">
-          <div class="settings-group" style="margin-bottom: 14px;">
-            <label for="tts-proxy-url" style="display: block; font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.15em; color: var(--text-muted); margin-bottom: 6px;">PROXY SERVER URL</label>
-            <input type="text" id="tts-proxy-url" placeholder="e.g. https://your-tts-proxy.vercel.app" style="width: 100%; box-sizing: border-box; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; outline: none; font-size: 13px;" class="ui-chrome" />
+
+        <!-- Column 2: Selected Voice Profile -->
+        <div class="tts-column">
+          <div class="tts-column-header">
+            <span class="tts-column-number">2.</span>
+            <span>SELECTED VOICE PROFILE</span>
           </div>
-          
-          <div class="settings-group" style="margin-bottom: 14px;">
-            <label style="display: block; font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.15em; color: var(--text-muted); margin-bottom: 6px;">GITHUB SECURITY LOGIN</label>
-            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface); padding: 8px 12px; border: 1px solid var(--border);">
-              <span id="github-user-status" style="font-family: var(--font-ui); font-size: 11px; color: var(--text-muted);">NOT LOGGED IN</span>
-              <button id="github-login-btn" class="open-btn ui-chrome" style="padding: 6px 12px; font-size: 9px; margin: 0;">Login</button>
+          <div class="tts-voice-cards" id="tts-voice-cards">
+            <!-- Populated by JavaScript based on engine selection -->
+          </div>
+        </div>
+
+        <!-- Column 3: Connection & Quota -->
+        <div class="tts-column">
+          <div class="tts-column-header">
+            <span class="tts-column-number">3.</span>
+            <span>CONNECTION &amp; QUOTA</span>
+          </div>
+          <div class="tts-controls-panel">
+            <div class="tts-control-group" id="tts-proxy-section">
+              <label for="tts-proxy-url">PROXY SERVER URL</label>
+              <input type="text" id="tts-proxy-url" placeholder="e.g. https://your-tts-proxy.vercel.app" class="ui-chrome" />
+            </div>
+
+            <div class="tts-control-group" id="tts-github-section">
+              <label>GITHUB SECURITY LOGIN</label>
+              <div class="tts-github-row">
+                <span class="tts-github-status" id="github-user-status">NOT LOGGED IN</span>
+                <button class="tts-github-btn" id="github-login-btn">LOGIN</button>
+              </div>
+            </div>
+
+            <div class="tts-control-group" id="tts-quota-section" style="display:none;">
+              <label>ENGINE QUOTA</label>
+              <div id="tts-quota-info" style="font-size: 11px; color: var(--text-muted); line-height: 1.6;"></div>
+            </div>
+
+            <div class="tts-save-row">
+              <button id="tts-settings-cancel-btn">Cancel</button>
+              <button class="tts-btn-save" id="tts-settings-save-btn">Save Settings</button>
             </div>
           </div>
         </div>
       </div>
-      
-      <div class="note-actions" style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px;">
-        <button class="note-cancel" id="tts-settings-cancel-btn">Cancel</button>
-        <button class="note-save" id="tts-settings-save-btn">Save Settings</button>
-      </div>
+
     </div>
   </div>
 

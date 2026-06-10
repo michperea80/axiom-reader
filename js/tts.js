@@ -189,28 +189,36 @@ function setCachedAudio(key, base64Value) {
 
 
 // --- SECTION 4: ADVANCED VOICES DEFINITIONS ---
+// Voice profiles with descriptions for the 3-column settings panel cards
 const ADVANCED_CHIRP_VOICES = [
-  { id: 'en-US-Chirp3-HD-Charon', name: 'Charon (US) — Male' },
-  { id: 'en-US-Chirp3-HD-Fenrir', name: 'Fenrir (US) — Male' },
-  { id: 'en-US-Chirp3-HD-Enceladus', name: 'Enceladus (US) — Male' },
-  { id: 'en-US-Chirp3-HD-Aoede', name: 'Aoede (US) — Female' },
-  { id: 'en-US-Chirp3-HD-Kore', name: 'Kore (US) — Female' },
-  { id: 'en-US-Chirp3-HD-Leda', name: 'Leda (US) — Female' },
-  { id: 'en-GB-Chirp3-HD-Charon', name: 'Charon (UK) — Male' },
-  { id: 'en-GB-Chirp3-HD-Fenrir', name: 'Fenrir (UK) — Male' },
-  { id: 'en-GB-Chirp3-HD-Enceladus', name: 'Enceladus (UK) — Male' },
-  { id: 'en-GB-Chirp3-HD-Aoede', name: 'Aoede (UK) — Female' },
-  { id: 'en-GB-Chirp3-HD-Kore', name: 'Kore (UK) — Female' },
-  { id: 'en-GB-Chirp3-HD-Leda', name: 'Leda (UK) — Female' }
+  { id: 'en-US-Chirp3-HD-Charon', name: 'Charon (US) — Male', desc: 'Deep, resonant, mature male' },
+  { id: 'en-US-Chirp3-HD-Fenrir', name: 'Fenrir (US) — Male', desc: 'Steady, slightly raspy male' },
+  { id: 'en-US-Chirp3-HD-Enceladus', name: 'Enceladus (US) — Male', desc: 'Smooth, deep male' },
+  { id: 'en-US-Chirp3-HD-Aoede', name: 'Aoede (US) — Female', desc: 'Warm, clear female' },
+  { id: 'en-US-Chirp3-HD-Kore', name: 'Kore (US) — Female', desc: 'Bright, expressive female' },
+  { id: 'en-US-Chirp3-HD-Leda', name: 'Leda (US) — Female', desc: 'Soft, gentle female' },
+  { id: 'en-GB-Chirp3-HD-Charon', name: 'Charon (UK) — Male', desc: 'Deep, resonant, mature male' },
+  { id: 'en-GB-Chirp3-HD-Fenrir', name: 'Fenrir (UK) — Male', desc: 'Steady, slightly raspy male' },
+  { id: 'en-GB-Chirp3-HD-Enceladus', name: 'Enceladus (UK) — Male', desc: 'Smooth, deep male' },
+  { id: 'en-GB-Chirp3-HD-Aoede', name: 'Aoede (UK) — Female', desc: 'Warm, clear female' },
+  { id: 'en-GB-Chirp3-HD-Kore', name: 'Kore (UK) — Female', desc: 'Bright, expressive female' },
+  { id: 'en-GB-Chirp3-HD-Leda', name: 'Leda (UK) — Female', desc: 'Soft, gentle female' }
 ];
 
 const ADVANCED_GEMINI_VOICES = [
-  { id: 'gemini-Puck', name: 'Puck (Gemini)' },
-  { id: 'gemini-Charon', name: 'Charon (Gemini)' },
-  { id: 'gemini-Kore', name: 'Kore (Gemini)' },
-  { id: 'gemini-Fenrir', name: 'Fenrir (Gemini)' },
-  { id: 'gemini-Aoede', name: 'Aoede (Gemini)' },
-  { id: 'gemini-Leda', name: 'Leda (Gemini)' }
+  { id: 'gemini-Puck', name: 'Puck (Gemini)', desc: 'Energetic, playful' },
+  { id: 'gemini-Charon', name: 'Charon (Gemini)', desc: 'Deep, thoughtful' },
+  { id: 'gemini-Kore', name: 'Kore (Gemini)', desc: 'Bright, clear' },
+  { id: 'gemini-Fenrir', name: 'Fenrir (Gemini)', desc: 'Steady, grounded' },
+  { id: 'gemini-Aoede', name: 'Aoede (Gemini)', desc: 'Warm, melodic' },
+  { id: 'gemini-Leda', name: 'Leda (Gemini)', desc: 'Gentle, soothing' }
+];
+
+// Engine definitions for the settings panel cards
+const TTS_ENGINES = [
+  { id: 'legacy', name: 'Legacy Speech synthesis', desc: 'Local processor offline speech module synth block', mode: 'offline' },
+  { id: 'chirp', name: 'Chirp 3 HD Web-API', desc: 'Google Cloud high fidelity hyper-resonant neural stream', mode: 'proxy' },
+  { id: 'gemini', name: 'Gemini 3.1 Pro Audio', desc: 'Bespoke AI voice generation for compiled episode exports', mode: 'proxy' }
 ];
 
 
@@ -1140,11 +1148,19 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
 
 
 // --- SECTION 10: VOICE PREVIEW FUNCTION ---
-// Plays a short test sentence using the currently selected voice engine
+// Plays a short test sentence using the currently selected voice engine.
+// IMPORTANT: Gemini previews are BLOCKED to conserve the strict 10 requests/day quota.
 function previewTTSVoice() {
+  const engine = getSelectedVoiceEngine();
+
+  // Block Gemini previews — daily quota is too limited (10/day) to spend on tests
+  if (engine === 'GEMINI') {
+    alert('Preview is disabled for Gemini 3.1 Pro voices.\n\nGemini has a strict limit of 10 requests per day. Use the main Play button to hear this voice during document reading instead.');
+    return;
+  }
+
   ensureAudioCtx();
   primeVoices();
-  const engine = getSelectedVoiceEngine();
 
   if (engine === 'LEGACY') {
     // Use the browser's built-in speech to preview
@@ -1161,8 +1177,8 @@ function previewTTSVoice() {
       utt.lang = selectedVoice.lang;
     }
     synth.speak(utt);
-  } else {
-    // For advanced voices, synthesize a short clip through the proxy
+  } else if (engine === 'CHIRP3_HD') {
+    // Chirp preview is allowed — synthesize a short clip through the proxy
     const tempItem = { text: TTS_TEST_TEXT, speechText: TTS_TEST_TEXT, blockIdx: 0 };
     const token = ++queueToken;
     speakAdvanced(tempItem, 0, token);
@@ -1186,35 +1202,113 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // DOM Elements for settings modal
+  // DOM Elements for the 3-column settings panel
   const settingsBtn = document.getElementById('tts-settings-btn');
   const settingsModal = document.getElementById('tts-settings-modal');
+  const closeBtn = document.getElementById('tts-settings-close-btn');
   const cancelBtn = document.getElementById('tts-settings-cancel-btn');
   const saveBtn = document.getElementById('tts-settings-save-btn');
-  const proxyFields = document.getElementById('proxy-settings-fields');
+  const engineCardsContainer = document.getElementById('tts-engine-cards');
+  const voiceCardsContainer = document.getElementById('tts-voice-cards');
   const proxyUrlInput = document.getElementById('tts-proxy-url');
   const githubUserStatus = document.getElementById('github-user-status');
   const githubLoginBtn = document.getElementById('github-login-btn');
-  const modeRadios = document.getElementsByName('tts-mode');
+  const proxySection = document.getElementById('tts-proxy-section');
+  const githubSection = document.getElementById('tts-github-section');
+  const quotaSection = document.getElementById('tts-quota-section');
+  const quotaInfo = document.getElementById('tts-quota-info');
 
-  // Load saved settings
-  const loadSavedConfig = () => {
-    const savedMode = localStorage.getItem('axiom-tts-mode') || 'offline';
-    const savedProxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
-    const githubUsername = localStorage.getItem('axiom-github-username') || '';
+  // Track the currently selected engine and voice within the modal
+  let pendingEngine = 'legacy';
+  let pendingVoice = '';
 
-    // Set radio buttons
-    for (const radio of modeRadios) {
-      if (radio.value === savedMode) {
-        radio.checked = true;
-      }
+  // --- RENDER ENGINE CARDS (Column 1) ---
+  function renderEngineCards() {
+    engineCardsContainer.innerHTML = '';
+    TTS_ENGINES.forEach(eng => {
+      const card = document.createElement('div');
+      card.className = 'tts-engine-card' + (eng.id === pendingEngine ? ' active' : '');
+      card.dataset.engineId = eng.id;
+      card.innerHTML = `
+        <div class="engine-dot"></div>
+        <div class="engine-name">${eng.name}</div>
+        <div class="engine-desc">${eng.desc}</div>
+      `;
+      card.addEventListener('click', () => {
+        pendingEngine = eng.id;
+        renderEngineCards();
+        renderVoiceCards();
+        updateConnectionVisibility();
+      });
+      engineCardsContainer.appendChild(card);
+    });
+  }
+
+  // --- RENDER VOICE CARDS (Column 2) ---
+  function renderVoiceCards() {
+    voiceCardsContainer.innerHTML = '';
+    let voiceList = [];
+
+    if (pendingEngine === 'chirp') {
+      voiceList = ADVANCED_CHIRP_VOICES;
+    } else if (pendingEngine === 'gemini') {
+      voiceList = ADVANCED_GEMINI_VOICES;
+    } else {
+      // Legacy: show browser voices + system default
+      const sysCard = document.createElement('div');
+      sysCard.className = 'tts-voice-card' + (pendingVoice === SYSTEM_VOICE_VALUE || !pendingVoice ? ' active' : '');
+      sysCard.innerHTML = '<div class="voice-name">Phone default voice</div><div class="voice-desc">System built-in speech engine</div>';
+      sysCard.addEventListener('click', () => { pendingVoice = SYSTEM_VOICE_VALUE; renderVoiceCards(); });
+      voiceCardsContainer.appendChild(sysCard);
+
+      voices.forEach(v => {
+        const vk = voiceKey(v);
+        const card = document.createElement('div');
+        card.className = 'tts-voice-card' + (pendingVoice === vk ? ' active' : '');
+        card.innerHTML = `<div class="voice-name">${v.name || 'Unnamed'}</div><div class="voice-desc">${v.lang || ''} ${v.localService ? '— device' : ''}</div>`;
+        card.addEventListener('click', () => { pendingVoice = vk; renderVoiceCards(); });
+        voiceCardsContainer.appendChild(card);
+      });
+      return;
     }
 
-    // Toggle proxy fields visual visibility
-    proxyFields.style.display = savedMode === 'proxy' ? 'block' : 'none';
-    proxyUrlInput.value = savedProxyUrl;
+    // For Chirp and Gemini engines
+    voiceList.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'tts-voice-card' + (pendingVoice === v.id ? ' active' : '');
+      card.innerHTML = `<div class="voice-name">${v.name}</div><div class="voice-desc">${v.desc}</div>`;
+      card.addEventListener('click', () => { pendingVoice = v.id; renderVoiceCards(); });
+      voiceCardsContainer.appendChild(card);
+    });
 
-    // Set GitHub login status
+    // Select first voice by default if none selected for this engine
+    if (voiceList.length > 0 && !voiceList.some(v => v.id === pendingVoice)) {
+      pendingVoice = voiceList[0].id;
+      renderVoiceCards();
+    }
+  }
+
+  // --- SHOW/HIDE CONNECTION CONTROLS (Column 3) ---
+  function updateConnectionVisibility() {
+    const needsProxy = (pendingEngine === 'chirp' || pendingEngine === 'gemini');
+    proxySection.style.display = needsProxy ? 'block' : 'none';
+    githubSection.style.display = needsProxy ? 'block' : 'none';
+
+    // Show quota information for Gemini
+    if (pendingEngine === 'gemini') {
+      quotaSection.style.display = 'block';
+      quotaInfo.innerHTML = '<span class="tts-quota-badge">⚠ DAILY LIMIT: 10 REQUESTS</span><br>Rate: max 3 per minute<br>Preview is disabled to conserve quota.';
+    } else if (pendingEngine === 'chirp') {
+      quotaSection.style.display = 'block';
+      quotaInfo.innerHTML = 'Rate: max 3 requests per minute<br>Responses are cached locally to save quota.';
+    } else {
+      quotaSection.style.display = 'none';
+    }
+  }
+
+  // --- UPDATE GITHUB STATUS DISPLAY ---
+  function updateGithubStatus() {
+    const githubUsername = localStorage.getItem('axiom-github-username') || '';
     if (githubUsername) {
       githubUserStatus.textContent = `LOGGED IN AS: ${githubUsername.toUpperCase()}`;
       githubUserStatus.style.color = 'var(--primary)';
@@ -1224,16 +1318,40 @@ document.addEventListener('DOMContentLoaded', () => {
       githubUserStatus.style.color = 'var(--text-muted)';
       githubLoginBtn.textContent = 'LOGIN';
     }
-  };
-
-  // Toggle proxy fields depending on mode selector
-  for (const radio of modeRadios) {
-    radio.addEventListener('change', (e) => {
-      proxyFields.style.display = e.target.value === 'proxy' ? 'block' : 'none';
-    });
   }
 
-  // Open settings modal
+  // --- DETERMINE PENDING ENGINE FROM SAVED VOICE ---
+  function resolveEngineFromVoice(voiceId) {
+    if (!voiceId || voiceId === SYSTEM_VOICE_VALUE) return 'legacy';
+    if (voiceId.startsWith('gemini-')) return 'gemini';
+    if (voiceId.startsWith('en-US-Chirp3-HD-') || voiceId.startsWith('en-GB-Chirp3-HD-')) return 'chirp';
+    return 'legacy';
+  }
+
+  // --- LOAD SAVED CONFIG INTO MODAL ---
+  function loadSavedConfig() {
+    const savedMode = localStorage.getItem('axiom-tts-mode') || 'offline';
+    const savedVoice = localStorage.getItem(SAVED_VOICE_KEY) || SYSTEM_VOICE_VALUE;
+    const savedProxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
+
+    // Determine engine from saved mode and voice
+    if (savedMode === 'proxy') {
+      pendingEngine = resolveEngineFromVoice(savedVoice);
+      // If mode is proxy but voice is a legacy voice, default to chirp engine
+      if (pendingEngine === 'legacy') pendingEngine = 'chirp';
+    } else {
+      pendingEngine = 'legacy';
+    }
+    pendingVoice = savedVoice;
+    proxyUrlInput.value = savedProxyUrl;
+
+    renderEngineCards();
+    renderVoiceCards();
+    updateConnectionVisibility();
+    updateGithubStatus();
+  }
+
+  // --- OPEN SETTINGS MODAL ---
   if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
       loadSavedConfig();
@@ -1242,34 +1360,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Close settings modal
+  // --- CLOSE SETTINGS MODAL ---
   const closeModal = () => {
     settingsModal.classList.remove('open');
     settingsModal.setAttribute('aria-hidden', 'true');
   };
 
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', closeModal);
-  }
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
-  // Save settings
+  // --- SAVE SETTINGS ---
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
-      let selectedMode = 'offline';
-      for (const radio of modeRadios) {
-        if (radio.checked) selectedMode = radio.value;
-      }
+      // Determine mode from engine selection
+      const newMode = (pendingEngine === 'legacy') ? 'offline' : 'proxy';
 
-      localStorage.setItem('axiom-tts-mode', selectedMode);
+      localStorage.setItem('axiom-tts-mode', newMode);
       localStorage.setItem('axiom-tts-proxy-url', cleanProxyUrl(proxyUrlInput.value));
+      localStorage.setItem(SAVED_VOICE_KEY, pendingVoice || SYSTEM_VOICE_VALUE);
 
-      // If switching to enhanced mode and no token, show warning
-      const token = localStorage.getItem('axiom-github-token');
-      if (selectedMode === 'proxy' && !token) {
-        alert("Enhanced Voice Mode saved. Note: You must log in with GitHub before you can generate voices.");
+      // Warn if proxy mode selected but not logged in
+      if (newMode === 'proxy' && !localStorage.getItem('axiom-github-token')) {
+        alert('Enhanced voice engine saved. Note: You must log in with GitHub before you can generate voices.');
       }
 
+      // Refresh the sidebar voice dropdown
       loadVoices();
+
+      // Set the dropdown to the voice chosen in the modal
+      const sel = document.getElementById('voice-sel');
+      if (sel && pendingVoice) {
+        if ([...sel.options].some(o => o.value === pendingVoice)) {
+          sel.value = pendingVoice;
+        }
+      }
+
       closeModal();
     });
   }
@@ -1278,46 +1403,39 @@ document.addEventListener('DOMContentLoaded', () => {
   // This must exactly match what is registered in your GitHub OAuth App settings
   function getCanonicalRedirectUri() {
     let uri = window.location.origin + window.location.pathname;
-    // Ensure trailing slash for consistency with GitHub callback URL
     if (!uri.endsWith('/') && !uri.endsWith('.html')) {
       uri += '/';
     }
     return uri;
   }
 
-  // Handle GitHub OAuth Login/Logout
+  // --- GITHUB OAUTH LOGIN/LOGOUT ---
   if (githubLoginBtn) {
     githubLoginBtn.addEventListener('click', () => {
       const token = localStorage.getItem('axiom-github-token');
-      
+
       if (token) {
         // Log out
         localStorage.removeItem('axiom-github-token');
         localStorage.removeItem('axiom-github-username');
-        loadSavedConfig();
+        updateGithubStatus();
         loadVoices();
-        alert("Logged out successfully.");
+        alert('Logged out successfully.');
       } else {
-        // Log in
+        // Log in — save current state first
         const proxyUrl = cleanProxyUrl(proxyUrlInput.value);
         if (!proxyUrl) {
-          alert("Please enter a Proxy Server URL first!");
+          alert('Please enter a Proxy Server URL first!');
           return;
         }
 
-        // Store active settings state so they aren't lost on redirect
-        let selectedMode = 'offline';
-        for (const radio of modeRadios) {
-          if (radio.checked) selectedMode = radio.value;
-        }
-        localStorage.setItem('axiom-tts-mode', selectedMode);
+        const newMode = (pendingEngine === 'legacy') ? 'offline' : 'proxy';
+        localStorage.setItem('axiom-tts-mode', newMode);
         localStorage.setItem('axiom-tts-proxy-url', proxyUrl);
 
-        // Redirect to proxy oauth endpoint
         const redirectUri = getCanonicalRedirectUri();
         const authUrl = `${proxyUrl}/api/auth/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
         console.log('[AXIOM Auth] Redirecting to GitHub login via:', authUrl);
-        console.log('[AXIOM Auth] Redirect URI being sent:', redirectUri);
         window.location.href = authUrl;
       }
     });
@@ -1327,24 +1445,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
   if (code) {
-    // Use the same canonical redirect URI that was sent during login initiation
     const cleanUrl = getCanonicalRedirectUri();
-
-    // Clear code parameter from URL immediately so it can't be reused
     window.history.replaceState({}, document.title, cleanUrl);
 
-    // Retrieve saved proxy URL to send exchange request
     const proxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url'));
     if (!proxyUrl) {
-      console.error('[AXIOM Auth] OAuth code received but proxy URL is not saved in browser storage.');
-      alert('Login failed: Proxy Server URL was lost. Please open TTS Engine Settings, enter your proxy URL, and try logging in again.');
+      console.error('[AXIOM Auth] OAuth code received but proxy URL is not saved.');
+      alert('Login failed: Proxy Server URL was lost. Please open TTS Engine Settings, enter your proxy URL, and try again.');
       return;
     }
 
     console.log('[AXIOM Auth] Exchanging OAuth code with proxy at:', proxyUrl);
-    console.log('[AXIOM Auth] Redirect URI for exchange:', cleanUrl);
 
-    // Display a loading notice toast
     const loadingToast = document.createElement('div');
     loadingToast.className = 'tts-error-toast';
     loadingToast.style.background = 'var(--surface-highest)';
@@ -1352,7 +1464,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingToast.textContent = 'Verifying GitHub login...';
     document.body.appendChild(loadingToast);
 
-    // Call proxy to exchange code for token
     fetch(`${proxyUrl}/api/auth/github`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1368,19 +1479,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return res.json();
     })
     .then(data => {
-      // Save token and username
       localStorage.setItem('axiom-github-token', data.token);
       localStorage.setItem('axiom-github-username', data.username);
-      localStorage.setItem('axiom-tts-mode', 'proxy'); // Auto toggle proxy mode
-      
+      localStorage.setItem('axiom-tts-mode', 'proxy');
+
       loadingToast.remove();
       loadVoices();
       console.log('[AXIOM Auth] Login successful as:', data.username);
-      
-      // Open settings page to show success status
-      if (settingsBtn) {
-        settingsBtn.click();
-      }
+
+      // Open settings panel to show the success
+      if (settingsBtn) settingsBtn.click();
 
       const successToast = document.createElement('div');
       successToast.className = 'tts-error-toast';
@@ -1393,8 +1501,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(err => {
       loadingToast.remove();
       console.error('[AXIOM Auth] OAuth token exchange error:', err);
-      console.error('[AXIOM Auth] Proxy URL was:', proxyUrl);
-      alert(`GitHub authentication failed: ${err.message}\n\nTroubleshooting tips:\n• Make sure your Proxy Server URL is correct in TTS Engine Settings\n• Check that the proxy is deployed and running on Vercel\n• Try logging out and logging in again`);
+      alert(`GitHub authentication failed: ${err.message}\n\nTroubleshooting tips:\n• Make sure your Proxy Server URL is correct\n• Check that the proxy is deployed on Vercel\n• Try logging out and logging in again`);
     });
   }
 
