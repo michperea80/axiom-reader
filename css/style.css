@@ -1166,3 +1166,47 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
     height: 30%;
   }
 }
+
+/* TTS Integration Additions */
+.generating-audio {
+  animation: pulse-synthesis 1.5s infinite alternate !important;
+}
+
+@keyframes pulse-synthesis {
+  0% {
+    background-color: rgba(70, 245, 224, 0.8) !important;
+    box-shadow: 0 0 12px var(--primary) !important;
+    color: var(--bg) !important;
+  }
+  100% {
+    background-color: var(--surface-highest) !important;
+    box-shadow: 0 0 0px transparent !important;
+    color: var(--text-bright) !important;
+  }
+}
+
+.tts-error-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--error-container);
+  border: 1px solid var(--error);
+  color: var(--text-bright);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  padding: 12px 18px;
+  z-index: 1000;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  animation: slide-toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slide-toast-in {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

@@ -1,0 +1,317 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>AXIOM_READER//DIASPORA - SCREEN_32</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#1E2538",
+                        "surface-bright": "#1E2538",
+                        "background": "#05070F",
+                        "inverse-on-surface": "#0A0E1A",
+                        "tertiary-fixed-dim": "#0F172A",
+                        "on-secondary-fixed-variant": "#004D6E",
+                        "outline-variant": "#1E2538",
+                        "surface-tint": "#46F5E0",
+                        "outline": "#94A3B8",
+                        "on-tertiary-fixed": "#F8FAFC",
+                        "on-primary-fixed-variant": "#005048",
+                        "error": "#FFB4AB",
+                        "primary-container": "#005048",
+                        "on-tertiary": "#F8FAFC",
+                        "surface-dim": "#05070F",
+                        "surface": "#0A0E1A",
+                        "on-secondary": "#00354D",
+                        "on-surface": "#F8FAFC",
+                        "surface-container-lowest": "#05070F",
+                        "on-surface-variant": "#CBD5E1",
+                        "surface-variant": "#1E2538",
+                        "secondary-fixed-dim": "#5DB7E2",
+                        "on-secondary-fixed": "#001E2E",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#46F5E0",
+                        "on-error-container": "#ffdad6",
+                        "inverse-primary": "#006a60",
+                        "primary": "#46F5E0",
+                        "inverse-surface": "#F8FAFC",
+                        "secondary-container": "#004D6E",
+                        "on-background": "#F8FAFC",
+                        "on-secondary-container": "#C1E8FF",
+                        "surface-container-high": "#151B2B",
+                        "on-tertiary-container": "#46F5E0",
+                        "tertiary": "#15202B",
+                        "primary-fixed-dim": "#17DECA",
+                        "surface-container-low": "#0A0E1A",
+                        "on-error": "#690005",
+                        "surface-container-highest": "#1E2538",
+                        "on-primary": "#003731",
+                        "tertiary-fixed": "#15202B",
+                        "surface-container": "#0F172A",
+                        "secondary-fixed": "#7CCFFF",
+                        "secondary": "#7CCFFF",
+                        "on-primary-fixed": "#00201C",
+                        "on-primary-container": "#46F5E0",
+                        "on-tertiary-fixed-variant": "#94A3B8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "display": ["Space Grotesk"],
+                        "body": ["Space Grotesk"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>body { background-color: #05070F; overflow-x: hidden; font-family: 'Manrope', sans-serif; } .ui-chrome { font-family: 'Space Grotesk', sans-serif; } .ambient-glow { background: radial-gradient(circle at top right, rgba(138, 111, 187, 0.15), transparent 70%); } .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }</style>
+<style>body { background-color: #05070F; overflow-x: hidden; font-family: 'Manrope', sans-serif; } .ui-chrome { font-family: 'Space Grotesk', sans-serif; } .ambient-glow { background: radial-gradient(circle at top right, rgba(138, 111, 187, 0.15), transparent 70%); } .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }</style></head>
+<body class="text-on-background selection:bg-primary/30">
+
+
+<!-- Navigation -->
+<header class="bg-surface/80 backdrop-blur-xl docked full-width top-0 z-50 rounded-none fixed w-full ui-chrome">
+<nav class="flex justify-between items-center w-full px-8 py-4 max-w-full ui-chrome">
+<div class="font-headline font-bold text-xl tracking-tighter text-primary italic rounded-none">
+                AXIOM_READER//DIASPORA
+            </div>
+<div class="hidden md:flex items-center space-x-8 rounded-none">
+<a class="font-headline uppercase tracking-[0.2em] text-[11px] font-bold text-on-surface-variant hover:text-on-surface transition-colors text-primary border-b-4 border-primary pb-1 rounded-none" href="#">ARCHIVE</a>
+<a class="font-headline uppercase tracking-[0.2em] text-[11px] font-bold text-on-surface-variant hover:text-on-surface transition-colors rounded-none" href="#">TELEMETRY</a>
+<a class="font-headline uppercase tracking-[0.2em] text-[11px] font-bold text-on-surface-variant hover:text-on-surface transition-colors rounded-none" href="#">ENCRYPTION</a>
+<a class="font-headline uppercase tracking-[0.2em] text-[11px] font-bold text-on-surface-variant hover:text-on-surface transition-colors rounded-none" href="#">TERMINAL</a>
+</div>
+<div class="flex items-center gap-4 rounded-none">
+<button class="material-symbols-outlined text-primary hover:bg-primary/10 transition-all duration-300 p-2 active:scale-95 rounded-none ui-chrome">sync_alt</button>
+<button class="material-symbols-outlined text-primary hover:bg-primary/10 transition-all duration-300 p-2 active:scale-95 rounded-none ui-chrome">settings</button>
+</div>
+</nav>
+</header>
+<main class="pt-24 pb-32 px-8 min-h-screen rounded-none">
+<!-- System Metadata Bar -->
+<div class="flex justify-between items-center mb-12 border-l-4 border-primary pl-4 rounded-none">
+<div class="rounded-none">
+<p class="font-body text-[9px] tracking-[0.5em] uppercase text-primary rounded-none">SYSTEM STATUS: CONNECTED</p>
+<h1 class="font-headline font-black text-4xl tracking-tighter uppercase ui-chrome">DESKTOP TERMINAL <span class="text-primary italic rounded-none">SC_32</span></h1>
+</div>
+<div class="text-right rounded-none">
+<p class="font-body text-[9px] tracking-[0.5em] uppercase text-outline rounded-none">LOCATION: SECTOR_07</p>
+<p class="font-body text-[9px] tracking-[0.5em] uppercase text-outline rounded-none">UPTIME: 428:12:09</p>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-8 rounded-none">
+<!-- Left Column: Primary Actions & Recent Archives -->
+<div class="col-span-12 lg:col-span-7 space-y-8 rounded-none">
+<!-- Action Buttons -->
+<div class="grid grid-cols-2 gap-4 rounded-none">
+<button class="group relative flex items-center justify-between bg-surface-container p-8 border border-outline-variant hover:border-primary transition-all duration-500 overflow-hidden rounded-none ambient-glow ui-chrome">
+<div class="relative z-10 rounded-none">
+<span class="font-body text-[10px] tracking-[0.4em] uppercase text-outline group-hover:text-primary transition-colors rounded-none">CMD_INIT</span>
+<h2 class="text-2xl font-bold tracking-tight mt-2 uppercase rounded-none ui-chrome">OPEN FOLDER</h2>
+</div>
+<span class="material-symbols-outlined text-4xl text-primary/40 group-hover:text-primary group-hover:scale-110 transition-all rounded-none ui-chrome">folder_open</span>
+<div class="absolute bottom-0 left-0 h-1 w-0 bg-primary group-hover:w-full transition-all duration-700 rounded-none"></div>
+</button>
+<button class="group relative flex items-center justify-between bg-surface-container p-8 border border-outline-variant hover:border-primary transition-all duration-500 overflow-hidden rounded-none ambient-glow ui-chrome">
+<div class="relative z-10 rounded-none">
+<span class="font-body text-[10px] tracking-[0.4em] uppercase text-outline group-hover:text-primary transition-colors rounded-none">FS_READ</span>
+<h2 class="text-2xl font-bold tracking-tight mt-2 uppercase rounded-none ui-chrome">OPEN FILE</h2>
+</div>
+<span class="material-symbols-outlined text-4xl text-primary/40 group-hover:text-primary group-hover:scale-110 transition-all rounded-none ui-chrome">draft</span>
+<div class="absolute bottom-0 left-0 h-1 w-0 bg-primary group-hover:w-full transition-all duration-700 rounded-none"></div>
+</button>
+</div>
+<!-- Recent Archives Section -->
+<div class="bg-surface-container p-8 relative border-t-4 border-surface-variant rounded-none ambient-glow ui-chrome">
+<div class="flex justify-between items-end mb-8 rounded-none">
+<h3 class="font-body text-[11px] tracking-[0.5em] uppercase text-primary rounded-none ui-chrome">RECENT_ARCHIVES.DB</h3>
+<div class="h-[1px] flex-grow mx-4 mb-2 bg-outline-variant/30 rounded-none"></div>
+<span class="font-body text-[11px] tracking-[0.5em] uppercase text-outline rounded-none">COUNT: 04</span>
+</div>
+<div class="space-y-4 rounded-none">
+<!-- File Entry 1 -->
+<div class="flex items-center justify-between p-4 bg-surface/50 border-l-2 border-primary hover:bg-primary/5 transition-colors group cursor-pointer rounded-none">
+<div class="flex items-center gap-6 rounded-none">
+<span class="font-body text-[11px] text-outline rounded-none">01</span>
+<div class="rounded-none">
+<p class="font-bold tracking-widest text-on-surface uppercase rounded-none">COORDINATES_BETA.LOG</p>
+<div class="flex gap-4 mt-1 rounded-none">
+<span class="font-body text-[9px] tracking-widest uppercase text-outline-variant rounded-none">SIZE: 124KB</span>
+<span class="font-body text-[9px] tracking-widest uppercase text-outline-variant rounded-none">TYPE: ENCRYPTED_RAW</span>
+</div>
+</div>
+</div>
+<div class="text-right rounded-none">
+<p class="font-body text-[9px] tracking-widest uppercase text-primary rounded-none">14:02:55 UTC</p>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors rounded-none ui-chrome">chevron_right</span>
+</div>
+</div>
+<!-- File Entry 2 -->
+<div class="flex items-center justify-between p-4 bg-surface/50 border-l-2 border-outline-variant hover:border-primary hover:bg-primary/5 transition-colors group cursor-pointer rounded-none">
+<div class="flex items-center gap-6 rounded-none">
+<span class="font-body text-[11px] text-outline rounded-none">02</span>
+<div class="rounded-none">
+<p class="font-bold tracking-widest text-on-surface uppercase rounded-none">ATMOSPHERIC_SCAN_X.DAT</p>
+<div class="flex gap-4 mt-1 rounded-none">
+<span class="font-body text-[9px] tracking-widest uppercase text-outline-variant rounded-none">SIZE: 2.4MB</span>
+<span class="font-body text-[9px] tracking-widest uppercase text-outline-variant rounded-none">TYPE: TELEMETRY</span>
+</div>
+</div>
+</div>
+<div class="text-right rounded-none">
+<p class="font-body text-[9px] tracking-widest uppercase text-outline rounded-none">09:12:01 UTC</p>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors rounded-none ui-chrome">chevron_right</span>
+</div>
+</div>
+<!-- File Entry 3 -->
+<div class="flex items-center justify-between p-4 bg-surface/50 border-l-2 border-outline-variant hover:border-primary hover:bg-primary/5 transition-colors group cursor-pointer rounded-none">
+<div class="flex items-center gap-6 rounded-none">
+<span class="font-body text-[11px] text-outline rounded-none">03</span>
+<div class="rounded-none">
+<p class="font-bold tracking-widest text-on-surface uppercase rounded-none">NEURAL_LINK_ALPHA.DUMP</p>
+<div class="flex gap-4 mt-1 rounded-none">
+<span class="font-body text-[9px] tracking-widest uppercase text-outline-variant rounded-none">SIZE: 842KB</span>
+<span class="font-body text-[9px] tracking-widest uppercase text-outline-variant rounded-none">TYPE: BIO_DATA</span>
+</div>
+</div>
+</div>
+<div class="text-right rounded-none">
+<p class="font-body text-[9px] tracking-widest uppercase text-outline rounded-none">04:44:20 UTC</p>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors rounded-none ui-chrome">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Vocal Synthesis Control Panel -->
+<div class="col-span-12 lg:col-span-5 rounded-none">
+<div class="bg-surface-container border border-outline-variant h-full p-8 relative overflow-hidden rounded-none">
+<!-- Background Visual Decor -->
+<div class="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-none">
+<div class="w-full h-full border-t border-r border-primary rounded-none"></div>
+</div>
+<div class="flex items-center gap-3 mb-10 rounded-none">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse rounded-none"></div>
+<h3 class="font-body text-[11px] tracking-[0.5em] uppercase text-primary rounded-none ui-chrome">VOCAL_SYNTHESIS_CONTROL</h3>
+</div>
+<div class="space-y-12 rounded-none">
+<!-- Voice Selection -->
+<div class="rounded-none">
+<label class="font-body text-[9px] tracking-[0.3em] uppercase text-outline mb-4 block ui-chrome">ACTIVE_VOICE_MODULE</label>
+<div class="grid grid-cols-2 gap-4 rounded-none">
+<button class="bg-primary text-on-primary p-4 flex justify-between items-center group rounded-none ambient-glow ui-chrome">
+<span class="font-bold tracking-widest rounded-none">ALPHA_01</span>
+<span class="material-symbols-outlined text-sm rounded-none ui-chrome" style="font-variation-settings: &quot;FILL&quot; 1;">check_circle</span>
+</button>
+<button class="bg-surface-container-highest text-outline p-4 flex justify-between items-center hover:text-on-surface transition-colors group rounded-none ambient-glow ui-chrome">
+<span class="font-bold tracking-widest rounded-none">BETA_V2</span>
+<span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 rounded-none ui-chrome">add</span>
+</button>
+</div>
+</div>
+<!-- Audio Visualization Placeholder -->
+<div class="h-32 bg-surface flex items-end justify-center gap-1 p-4 border border-outline-variant/30 rounded-none">
+<div class="w-1 bg-primary h-1/2 opacity-20 rounded-none"></div>
+<div class="w-1 bg-primary h-2/3 opacity-40 rounded-none"></div>
+<div class="w-1 bg-primary h-full glow-cyan rounded-none"></div>
+<div class="w-1 bg-primary h-1/3 opacity-30 rounded-none"></div>
+<div class="w-1 bg-primary h-1/2 opacity-50 rounded-none"></div>
+<div class="w-1 bg-primary h-3/4 glow-cyan rounded-none"></div>
+<div class="w-1 bg-primary h-1/4 opacity-10 rounded-none"></div>
+<div class="w-1 bg-primary h-1/2 opacity-20 rounded-none"></div>
+<div class="w-1 bg-primary h-full glow-cyan rounded-none"></div>
+<div class="w-1 bg-primary h-1/3 opacity-30 rounded-none"></div>
+<div class="w-1 bg-primary h-1/2 opacity-50 rounded-none"></div>
+<div class="w-1 bg-primary h-3/4 glow-cyan rounded-none"></div>
+</div>
+<!-- Range Controls -->
+<div class="space-y-8 rounded-none">
+<div class="space-y-4 rounded-none">
+<div class="flex justify-between items-center rounded-none">
+<span class="font-body text-[9px] tracking-[0.3em] uppercase text-outline rounded-none">PLAYBACK_SPEED</span>
+<span class="font-body text-[11px] text-primary rounded-none">1.25X</span>
+</div>
+<div class="h-1 w-full bg-surface-container-highest relative rounded-none">
+<div class="absolute top-0 left-0 h-full bg-primary w-3/4 rounded-none"></div>
+<div class="absolute top-1/2 -translate-y-1/2 left-3/4 w-3 h-3 bg-white border-2 border-primary rounded-none"></div>
+</div>
+</div>
+<div class="space-y-4 rounded-none">
+<div class="flex justify-between items-center rounded-none">
+<span class="font-body text-[9px] tracking-[0.3em] uppercase text-outline rounded-none">FREQUENCY_PITCH</span>
+<span class="font-body text-[11px] text-primary rounded-none">440HZ</span>
+</div>
+<div class="h-1 w-full bg-surface-container-highest relative rounded-none">
+<div class="absolute top-0 left-0 h-full bg-primary w-1/2 rounded-none"></div>
+<div class="absolute top-1/2 -translate-y-1/2 left-1/2 w-3 h-3 bg-white border-2 border-primary rounded-none"></div>
+</div>
+</div>
+</div>
+<!-- Playback Controls -->
+<div class="flex justify-center items-center gap-12 pt-4 rounded-none">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors rounded-none ui-chrome">skip_previous</button>
+<button class="w-16 h-16 flex items-center justify-center bg-primary text-on-primary hover:scale-105 active:scale-95 transition-all rounded-none ui-chrome">
+<span class="material-symbols-outlined text-3xl rounded-none ui-chrome" style="font-variation-settings: &quot;FILL&quot; 1;">play_arrow</span>
+</button>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors rounded-none ui-chrome">skip_next</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Featured Visual Element -->
+<div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 rounded-none">
+<div class="bg-surface-container p-6 relative group overflow-hidden rounded-none">
+<img class="w-full h-48 object-cover opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" data-alt="A cinematic, high-contrast satellite view of an alien planet's surface at night, featuring glowing neon cyan city grids against a deep obsidian terrain. The lighting is moody and technical, with visible scanning lines and digital metadata overlays in the corners of the frame. The overall aesthetic is cold, scientific, and futuristic, matching a dark mode archival interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqOU8Ucgd2mX9pImZBqspcFPPYzo9gbLpz0zCfb4vN8cafUFQoBW-63D_xWANZEV_AGSK1DErSHd4qBQhUTDaIQ3SyiGlRm7UmgsVvPkmex1Nwi51OTqvkO37V3na5KLURyA-b0JuAjdmPec9imkcR_CzMOG-L5-NPAFlTYweFIX3uVjUCvq4RriEcL9rZBpa3tdUGaksIbTMh2fO_kdRitqdOGoPGkRp9oW0hrC36wsOmkeP45JAe7jhlMfbEUX0l8DG_G17h9HA">
+<div class="mt-4 rounded-none">
+<p class="font-body text-[9px] tracking-[0.5em] uppercase text-primary rounded-none">SCAN_IMAGE_01</p>
+<p class="text-xs text-outline mt-1 uppercase tracking-widest rounded-none">SUB-SECTOR ANALYSIS COMPLETE</p>
+</div>
+</div>
+<div class="bg-surface-container p-6 relative group overflow-hidden mt-8 rounded-none">
+<img class="w-full h-48 object-cover opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" data-alt="A detailed digital rendering of a holographic data sphere composed of intricate neon cyan geometric lines and floating particles against a pitch black void. Soft radial light glows from the center of the sphere, casting a technological aura. The style is ultra-modern and brutalist, with a focus on mathematical precision and technical data visualization." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDh-DSybmzXY1cGm2-h2Wro_oscJ0a_32ylQSPa-PPdRFbF3vJFjIgOhM8RMOsbnM9R0Bd6bPM49d5Zj1cEGFjgd-txZA4Zh28cFdLBTYRgICG-AHl4WqyLww7XJ5Otvrq2gjArJF3K8gf26x5nV1413ZpK1CC_ivZCFWI7WAejlK4A0MwdoPZWD6v9jCWpdgIOIJKkzoccoZDdixo9Qu-6oLeZ9FfgP67fGYkuKWKFSdWN6KifLXuEBAMwt_SVpdUAzivXNH5FHbw">
+<div class="mt-4 rounded-none">
+<p class="font-body text-[9px] tracking-[0.5em] uppercase text-primary rounded-none">DATA_NODE_77</p>
+<p class="text-xs text-outline mt-1 uppercase tracking-widest rounded-none">SYNCHRONIZING NEURAL MESH</p>
+</div>
+</div>
+<div class="bg-surface-container p-6 relative group overflow-hidden rounded-none">
+<img class="w-full h-48 object-cover opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" data-alt="A deep space telescopic capture of a distant nebula with vibrant cyan and deep blue dust clouds swirling in the dark vacuum. Subtle star points flicker with sharp white light. The image is framed with archival technical borders and micro-typography metadata, creating a sense of a classified astronomical observation document." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDkrc1BvyXNRlwe3W9SLU5ffQjfxT7jv_iEtXqPzhyHjFFDZvzBUGiSL0ERqwO_KCjBcM5ueyc5OUrlqQOQ1vySmmREEv9vgoukeS8hCybjrcSM1Nqovc3qnt6usygRwaF6nAoGBn8n2W5UqK8EhYIfoMoutprPw_IYHBtYTNBdpGgUsoWVzgc-mMO8bpnu481wM3fP1mBjyDjRA5qIoDf5l6amq3SpIBWc8_186wCweA7hX4c642-TOeMA0KksU9DjFurNHmgb08">
+<div class="mt-4 rounded-none">
+<p class="font-body text-[9px] tracking-[0.5em] uppercase text-primary rounded-none">NEBULA_RECON</p>
+<p class="text-xs text-outline mt-1 uppercase tracking-widest rounded-none">COORDINATES VERIFIED</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest text-primary docked full-width bottom-0 rounded-none fixed w-full z-50 ui-chrome">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-8 py-6 border-t-4 border-surface-container rounded-none">
+<div class="font-headline text-primary font-black uppercase tracking-widest text-xs rounded-none">
+                EVENT_HORIZON_ARCHIVAL_SYSTEM
+            </div>
+<div class="flex gap-8 my-4 md:my-0 rounded-none">
+<a class="font-body text-[9px] tracking-[0.5em] uppercase text-outline hover:text-primary transition-colors cursor-pointer rounded-none" href="#">SYSTEM_STATUS</a>
+<a class="font-body text-[9px] tracking-[0.5em] uppercase text-outline hover:text-primary transition-colors cursor-pointer rounded-none" href="#">COORDINATES</a>
+<a class="font-body text-[9px] tracking-[0.5em] uppercase text-outline hover:text-primary transition-colors cursor-pointer rounded-none" href="#">CLEARANCE_LEVEL</a>
+</div>
+<div class="font-body text-[9px] tracking-[0.5em] uppercase opacity-60 rounded-none">
+                ©2024 EVENT_HORIZON_ARCHIVAL_SYSTEM // ALL_RIGHTS_RESERVED
+            </div>
+</div>
+</footer>
+
+
+</body></html>
