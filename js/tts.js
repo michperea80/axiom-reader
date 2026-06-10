@@ -1241,6 +1241,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Helper: build a consistent, canonical redirect URI every time
+  // This must exactly match what is registered in your GitHub OAuth App settings
+  function getCanonicalRedirectUri() {
+    let uri = window.location.origin + window.location.pathname;
+    // Ensure trailing slash for consistency with GitHub callback URL
+    if (!uri.endsWith('/') && !uri.endsWith('.html')) {
+      uri += '/';
+    }
+    return uri;
+  }
+
   // Handle GitHub OAuth Login/Logout
   if (githubLoginBtn) {
     githubLoginBtn.addEventListener('click', () => {
@@ -1270,11 +1281,10 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('axiom-tts-proxy-url', proxyUrl);
 
         // Redirect to proxy oauth endpoint
-        let redirectUri = window.location.origin + window.location.pathname;
-        if (!redirectUri.endsWith('/') && !redirectUri.endsWith('.html')) {
-          redirectUri += '/';
-        }
+        const redirectUri = getCanonicalRedirectUri();
         const authUrl = `${proxyUrl}/api/auth/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
+        console.log('[AXIOM Auth] Redirecting to GitHub login via:', authUrl);
+        console.log('[AXIOM Auth] Redirect URI being sent:', redirectUri);
         window.location.href = authUrl;
       }
     });
@@ -1284,19 +1294,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
   if (code) {
-    // Clear code parameter from URL immediately
-    let cleanUrl = window.location.origin + window.location.pathname;
-    if (!cleanUrl.endsWith('/') && !cleanUrl.endsWith('.html')) {
-      cleanUrl += '/';
-    }
+    // Use the same canonical redirect URI that was sent during login initiation
+    const cleanUrl = getCanonicalRedirectUri();
+
+    // Clear code parameter from URL immediately so it can't be reused
     window.history.replaceState({}, document.title, cleanUrl);
 
     // Retrieve saved proxy URL to send exchange request
     const proxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url'));
     if (!proxyUrl) {
-      console.error("Oauth code received but proxy URL is not set in local storage.");
+      console.error('[AXIOM Auth] OAuth code received but proxy URL is not saved in browser storage.');
+      alert('Login failed: Proxy Server URL was lost. Please open TTS Engine Settings, enter your proxy URL, and try logging in again.');
       return;
     }
+
+    console.log('[AXIOM Auth] Exchanging OAuth code with proxy at:', proxyUrl);
+    console.log('[AXIOM Auth] Redirect URI for exchange:', cleanUrl);
 
     // Display a loading notice toast
     const loadingToast = document.createElement('div');
@@ -1313,8 +1326,11 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({ code: code, redirect_uri: cleanUrl })
     })
     .then(res => {
+      console.log('[AXIOM Auth] Proxy response status:', res.status);
       if (!res.ok) {
-        return res.json().then(data => { throw new Error(data.error || 'Failed to exchange login code'); });
+        return res.json()
+          .catch(() => ({ error: `Server returned status ${res.status}` }))
+          .then(data => { throw new Error(data.error || 'Failed to exchange login code'); });
       }
       return res.json();
     })
@@ -1326,6 +1342,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       loadingToast.remove();
       loadVoices();
+      console.log('[AXIOM Auth] Login successful as:', data.username);
       
       // Open settings page to show success status
       if (settingsBtn) {
@@ -1342,8 +1359,9 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .catch(err => {
       loadingToast.remove();
-      console.error("OAuth token exchange error:", err);
-      alert(`GitHub authentication failed: ${err.message}`);
+      console.error('[AXIOM Auth] OAuth token exchange error:', err);
+      console.error('[AXIOM Auth] Proxy URL was:', proxyUrl);
+      alert(`GitHub authentication failed: ${err.message}\n\nTroubleshooting tips:\n• Make sure your Proxy Server URL is correct in TTS Engine Settings\n• Check that the proxy is deployed and running on Vercel\n• Try logging out and logging in again`);
     });
   }
 
