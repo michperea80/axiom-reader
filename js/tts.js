@@ -1253,6 +1253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadSavedConfig();
         loadVoices();
         alert("Logged out successfully.");
+      } else {
         // Log in
         const proxyUrl = cleanProxyUrl(proxyUrlInput.value);
         if (!proxyUrl) {
