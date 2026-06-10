@@ -138,23 +138,25 @@ function cleanProxyUrl(url) {
 
 
 // --- SECTION 3: DATABASE CACHING (INDEXEDDB) ---
-const DB_NAME = 'axiom-tts-cache-db';
-const STORE_NAME = 'audio-cache';
+// Note: these constant names are prefixed with TTS_CACHE_ to avoid collisions
+// with library.js which also declares database constants in the global scope.
+const TTS_CACHE_DB_NAME = 'axiom-tts-cache-db';
+const TTS_CACHE_STORE_NAME = 'audio-cache';
 
 // Simple, zero-dependency utility to read audio out of IndexedDB local storage
 function getCachedAudio(key) {
   return new Promise((resolve) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(TTS_CACHE_DB_NAME, 1);
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
+      if (!db.objectStoreNames.contains(TTS_CACHE_STORE_NAME)) {
+        db.createObjectStore(TTS_CACHE_STORE_NAME);
       }
     };
     request.onsuccess = (e) => {
       const db = e.target.result;
-      const transaction = db.transaction(STORE_NAME, 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction(TTS_CACHE_STORE_NAME, 'readonly');
+      const store = transaction.objectStore(TTS_CACHE_STORE_NAME);
       const getRequest = store.get(key);
       getRequest.onsuccess = () => resolve(getRequest.result || null);
       getRequest.onerror = () => resolve(null);
@@ -166,17 +168,17 @@ function getCachedAudio(key) {
 // Simple, zero-dependency utility to save audio into IndexedDB local storage
 function setCachedAudio(key, base64Value) {
   return new Promise((resolve) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(TTS_CACHE_DB_NAME, 1);
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
+      if (!db.objectStoreNames.contains(TTS_CACHE_STORE_NAME)) {
+        db.createObjectStore(TTS_CACHE_STORE_NAME);
       }
     };
     request.onsuccess = (e) => {
       const db = e.target.result;
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction(TTS_CACHE_STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(TTS_CACHE_STORE_NAME);
       const putRequest = store.put(base64Value, key);
       putRequest.onsuccess = () => resolve(true);
       putRequest.onerror = () => resolve(false);
@@ -1137,7 +1139,38 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
 }
 
 
-// --- SECTION 10: SETTINGS DIALOG, GITHUB OAUTH & WIRING ---
+// --- SECTION 10: VOICE PREVIEW FUNCTION ---
+// Plays a short test sentence using the currently selected voice engine
+function previewTTSVoice() {
+  ensureAudioCtx();
+  primeVoices();
+  const engine = getSelectedVoiceEngine();
+
+  if (engine === 'LEGACY') {
+    // Use the browser's built-in speech to preview
+    synth.cancel();
+    const utt = new SpeechSynthesisUtterance(TTS_TEST_TEXT);
+    const selectedVoice = getSelectedVoice();
+    const rate = parseFloat(document.getElementById('rate-slider').value);
+    const pitchSlider = document.getElementById('pitch-slider');
+    const pitch = pitchSlider ? parseFloat(pitchSlider.value) : 1.0;
+    utt.rate = Number.isFinite(rate) ? rate : 0.95;
+    utt.pitch = Number.isFinite(pitch) ? pitch : 1.0;
+    if (selectedVoice) {
+      utt.voice = selectedVoice;
+      utt.lang = selectedVoice.lang;
+    }
+    synth.speak(utt);
+  } else {
+    // For advanced voices, synthesize a short clip through the proxy
+    const tempItem = { text: TTS_TEST_TEXT, speechText: TTS_TEST_TEXT, blockIdx: 0 };
+    const token = ++queueToken;
+    speakAdvanced(tempItem, 0, token);
+  }
+}
+
+
+// --- SECTION 11: SETTINGS DIALOG, GITHUB OAUTH & WIRING ---
 document.addEventListener('DOMContentLoaded', () => {
   // Bind compiler batch download button if present in UI layout
   const downloadBtn = document.getElementById('download-wav-btn');
