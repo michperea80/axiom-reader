@@ -113,6 +113,11 @@
             </div>
           </div>
           
+          <!-- TTS Loading Progress Bar (visible when cloud voices are synthesizing) -->
+          <div class="tts-progress-bar" id="tts-progress-bar">
+            <div class="tts-progress-fill" id="tts-progress-fill"></div>
+          </div>
+          
           <div id="reader-main">
             <!-- Load document prompt screen -->
             <div id="load-screen">
@@ -402,6 +407,16 @@
   <input type="file" id="pronunciation-input" accept=".json,application/json" />
 
   <!-- Script Libraries -->
+  <!-- Floating Mini-Player for Mobile -->
+  <div id="mini-player">
+    <span class="mini-pos" id="mini-pos-label">— / —</span>
+    <button class="material-symbols-outlined" id="mini-btn-prev" title="Previous Sentence">skip_previous</button>
+    <button class="mini-play-btn" id="mini-play-btn" title="Toggle Speech">
+      <span class="material-symbols-outlined">play_arrow</span>
+    </button>
+    <button class="material-symbols-outlined" id="mini-btn-next" title="Next Sentence">skip_next</button>
+  </div>
+
   <script src="./js/parser.js"></script>
   <script src="./js/tts.js"></script>
   <script src="./js/library.js"></script>

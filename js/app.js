@@ -657,6 +657,11 @@ document.getElementById('btn-next').addEventListener('click', () => jump(1));
 document.getElementById('btn-b5').addEventListener('click',  () => jump(-5));
 document.getElementById('btn-f5').addEventListener('click',  () => jump(5));
 
+// Floating mini-player buttons (visible on mobile screens only)
+document.getElementById('mini-play-btn').addEventListener('click', toggleTTS);
+document.getElementById('mini-btn-prev').addEventListener('click', () => jump(-1));
+document.getElementById('mini-btn-next').addEventListener('click', () => jump(1));
+
 document.getElementById('status-sel').addEventListener('change', e => {
   updateReviewStatus(e.target.value);
 });

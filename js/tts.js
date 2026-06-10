@@ -122,6 +122,11 @@ window.addEventListener('focus', recoverPlayback);
 window.addEventListener('pageshow', recoverPlayback);
 
 
+// Default proxy URL — hard-coded so users never need to type or remember it.
+// This is NOT a security risk: the proxy still requires GitHub OAuth login.
+// Only the allowed GitHub user (configured on Vercel) can authenticate.
+const DEFAULT_PROXY_URL = 'https://axiom-tts-proxy.vercel.app';
+
 function cleanProxyUrl(url) {
   url = (url || '').trim();
   if (!url) return '';
@@ -134,6 +139,35 @@ function cleanProxyUrl(url) {
     url = url.slice(0, -1);
   }
   return url;
+}
+
+// Resolve the active proxy URL: use saved value, or fall back to the default
+function getProxyUrl() {
+  const saved = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
+  return saved || DEFAULT_PROXY_URL;
+}
+
+// --- LOADING PROGRESS BAR ---
+// Shows a thin horizontal bar below the reader header during cloud voice synthesis.
+// The bar fills incrementally at each processing phase so users see real progress.
+function showLoadingBar() {
+  const bar = document.getElementById('tts-progress-bar');
+  const fill = document.getElementById('tts-progress-fill');
+  if (bar) {
+    bar.classList.add('active');
+    bar.classList.remove('indeterminate');
+  }
+  if (fill) fill.style.width = '0%';
+}
+function updateLoadingBar(percent) {
+  const fill = document.getElementById('tts-progress-fill');
+  if (fill) fill.style.width = percent + '%';
+}
+function hideLoadingBar() {
+  const bar = document.getElementById('tts-progress-bar');
+  const fill = document.getElementById('tts-progress-fill');
+  if (bar) bar.classList.remove('active', 'indeterminate');
+  if (fill) fill.style.width = '0%';
 }
 
 
@@ -512,14 +546,17 @@ async function speakAdvanced(item, sentenceIdx, token) {
   if (!base64Audio) {
     const playBtn = document.getElementById('play-btn');
     if (playBtn) playBtn.classList.add('generating-audio');
+    showLoadingBar();
+    updateLoadingBar(10); // Phase: Queued
 
     try {
       // Respect our polite client-side rate limit slot
       await acquireRequestSlot();
+      updateLoadingBar(25); // Phase: Slot acquired
 
-      const proxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
+      const proxyUrl = getProxyUrl();
       if (!proxyUrl) {
-        throw new Error("Proxy server URL is not configured in settings.");
+        throw new Error("Proxy server URL is not configured. Open TTS Engine Settings to set it up.");
       }
 
       const headers = { 'Content-Type': 'application/json' };
@@ -528,6 +565,7 @@ async function speakAdvanced(item, sentenceIdx, token) {
         headers['Authorization'] = `Bearer ${githubToken}`;
       }
 
+      updateLoadingBar(50); // Phase: Sending to proxy server
       const response = await fetch(`${proxyUrl}/api/tts`, {
         method: 'POST',
         headers: headers,
@@ -544,6 +582,7 @@ async function speakAdvanced(item, sentenceIdx, token) {
         throw new Error(errorText.error || `Proxy response failure: ${response.status}`);
       }
 
+      updateLoadingBar(75); // Phase: Response received
       const responseJson = await response.json();
       base64Audio = responseJson.data;
 
@@ -575,12 +614,14 @@ async function speakAdvanced(item, sentenceIdx, token) {
       return;
     } finally {
       if (playBtn) playBtn.classList.remove('generating-audio');
+      hideLoadingBar();
     }
   }
 
   if (!playing || token !== queueToken) return;
 
   try {
+    updateLoadingBar(90); // Phase: Decoding audio data
     // Decode base64 to 16-bit PCM bytes
     const rawBinary = atob(base64Audio);
     const byteLength = rawBinary.length;
@@ -650,6 +691,7 @@ async function speakAdvanced(item, sentenceIdx, token) {
       scheduleSpeech(idx, token, 70);
     };
 
+    hideLoadingBar(); // Audio playing — hide progress bar
     sourceNode.start(0);
 
   } catch (err) {
@@ -862,6 +904,7 @@ function stopTTS() {
   }
   
   // Clean stop for advanced player
+  hideLoadingBar();
   if (currentAudioSource) {
     try { currentAudioSource.stop(); } catch (_) {}
     currentAudioSource = null;
@@ -875,13 +918,19 @@ function stopTTS() {
 function toggleTTS() { if (playing) stopTTS(); else startTTS(); }
 
 function setBtn(s) {
+  const icon = s === 'play' ? 'play_arrow' : 'pause';
+  // Update main play button
   const btn = document.getElementById('play-btn');
-  if (!btn) return;
-  const icon = btn.querySelector('.material-symbols-outlined');
-  if (icon) {
-    icon.textContent = s === 'play' ? 'play_arrow' : 'pause';
-  } else {
-    btn.textContent = s === 'play' ? '▶' : '⏸';
+  if (btn) {
+    const btnIcon = btn.querySelector('.material-symbols-outlined');
+    if (btnIcon) btnIcon.textContent = icon;
+    else btn.textContent = s === 'play' ? '▶' : '⏸';
+  }
+  // Sync mini-player play button
+  const miniBtn = document.getElementById('mini-play-btn');
+  if (miniBtn) {
+    const miniIcon = miniBtn.querySelector('.material-symbols-outlined');
+    if (miniIcon) miniIcon.textContent = icon;
   }
 }
 
@@ -941,10 +990,12 @@ function highlightBlock(blockIdx) {
 }
 
 function updatePos() {
+  const posText = ttsList.length ? `${idx + 1} / ${ttsList.length}` : '— / —';
   const posLabel = document.getElementById('pos-label');
-  if (posLabel) {
-    posLabel.textContent = ttsList.length ? `${idx + 1} / ${ttsList.length}` : '— / —';
-  }
+  if (posLabel) posLabel.textContent = posText;
+  // Sync mini-player position label
+  const miniPos = document.getElementById('mini-pos-label');
+  if (miniPos) miniPos.textContent = posText;
 }
 
 
@@ -1017,7 +1068,7 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
         try {
           await acquireRequestSlot();
 
-          const proxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
+          const proxyUrl = getProxyUrl();
           if (!proxyUrl) {
             throw new Error("Proxy server URL is not configured.");
           }
@@ -1151,7 +1202,9 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
 // Plays a short test sentence using the currently selected voice engine.
 // IMPORTANT: Gemini previews are BLOCKED to conserve the strict 10 requests/day quota.
 function previewTTSVoice() {
+  console.log('[AXIOM Preview] previewTTSVoice called');
   const engine = getSelectedVoiceEngine();
+  console.log('[AXIOM Preview] Current engine:', engine);
 
   // Block Gemini previews — daily quota is too limited (10/day) to spend on tests
   if (engine === 'GEMINI') {
@@ -1176,9 +1229,11 @@ function previewTTSVoice() {
       utt.voice = selectedVoice;
       utt.lang = selectedVoice.lang;
     }
+    console.log('[AXIOM Preview] Speaking with legacy voice:', selectedVoice?.name || 'default');
     synth.speak(utt);
   } else if (engine === 'CHIRP3_HD') {
     // Chirp preview is allowed — synthesize a short clip through the proxy
+    console.log('[AXIOM Preview] Requesting Chirp preview from proxy');
     const tempItem = { text: TTS_TEST_TEXT, speechText: TTS_TEST_TEXT, blockIdx: 0 };
     const token = ++queueToken;
     speakAdvanced(tempItem, 0, token);
@@ -1332,7 +1387,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadSavedConfig() {
     const savedMode = localStorage.getItem('axiom-tts-mode') || 'offline';
     const savedVoice = localStorage.getItem(SAVED_VOICE_KEY) || SYSTEM_VOICE_VALUE;
-    const savedProxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
+    const savedProxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '') || DEFAULT_PROXY_URL;
 
     // Determine engine from saved mode and voice
     if (savedMode === 'proxy') {
@@ -1448,7 +1503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cleanUrl = getCanonicalRedirectUri();
     window.history.replaceState({}, document.title, cleanUrl);
 
-    const proxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url'));
+    const proxyUrl = getProxyUrl();
     if (!proxyUrl) {
       console.error('[AXIOM Auth] OAuth code received but proxy URL is not saved.');
       alert('Login failed: Proxy Server URL was lost. Please open TTS Engine Settings, enter your proxy URL, and try again.');
@@ -1482,6 +1537,10 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('axiom-github-token', data.token);
       localStorage.setItem('axiom-github-username', data.username);
       localStorage.setItem('axiom-tts-mode', 'proxy');
+      // Save the proxy URL from the server response (ensures cross-device persistence)
+      if (data.proxyUrl) {
+        localStorage.setItem('axiom-tts-proxy-url', cleanProxyUrl(data.proxyUrl));
+      }
 
       loadingToast.remove();
       loadVoices();
