@@ -122,6 +122,21 @@ window.addEventListener('focus', recoverPlayback);
 window.addEventListener('pageshow', recoverPlayback);
 
 
+function cleanProxyUrl(url) {
+  url = (url || '').trim();
+  if (!url) return '';
+  if (url.startsWith('http://')) {
+    url = 'https://' + url.substring(7);
+  } else if (!url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+  while (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+  return url;
+}
+
+
 // --- SECTION 3: DATABASE CACHING (INDEXEDDB) ---
 const DB_NAME = 'axiom-tts-cache-db';
 const STORE_NAME = 'audio-cache';
@@ -492,7 +507,7 @@ async function speakAdvanced(item, sentenceIdx, token) {
       // Respect our polite client-side rate limit slot
       await acquireRequestSlot();
 
-      const proxyUrl = localStorage.getItem('axiom-tts-proxy-url') || '';
+      const proxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
       if (!proxyUrl) {
         throw new Error("Proxy server URL is not configured in settings.");
       }
@@ -992,7 +1007,7 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
         try {
           await acquireRequestSlot();
 
-          const proxyUrl = localStorage.getItem('axiom-tts-proxy-url') || '';
+          const proxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
           if (!proxyUrl) {
             throw new Error("Proxy server URL is not configured.");
           }
@@ -1152,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load saved settings
   const loadSavedConfig = () => {
     const savedMode = localStorage.getItem('axiom-tts-mode') || 'offline';
-    const savedProxyUrl = localStorage.getItem('axiom-tts-proxy-url') || '';
+    const savedProxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url') || '');
     const githubUsername = localStorage.getItem('axiom-github-username') || '';
 
     // Set radio buttons
@@ -1213,7 +1228,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       localStorage.setItem('axiom-tts-mode', selectedMode);
-      localStorage.setItem('axiom-tts-proxy-url', proxyUrlInput.value.trim());
+      localStorage.setItem('axiom-tts-proxy-url', cleanProxyUrl(proxyUrlInput.value));
 
       // If switching to enhanced mode and no token, show warning
       const token = localStorage.getItem('axiom-github-token');
@@ -1238,9 +1253,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loadSavedConfig();
         loadVoices();
         alert("Logged out successfully.");
-      } else {
         // Log in
-        const proxyUrl = proxyUrlInput.value.trim();
+        const proxyUrl = cleanProxyUrl(proxyUrlInput.value);
         if (!proxyUrl) {
           alert("Please enter a Proxy Server URL first!");
           return;
@@ -1277,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState({}, document.title, cleanUrl);
 
     // Retrieve saved proxy URL to send exchange request
-    const proxyUrl = localStorage.getItem('axiom-tts-proxy-url');
+    const proxyUrl = cleanProxyUrl(localStorage.getItem('axiom-tts-proxy-url'));
     if (!proxyUrl) {
       console.error("Oauth code received but proxy URL is not set in local storage.");
       return;
