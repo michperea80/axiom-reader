@@ -1255,7 +1255,10 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('axiom-tts-proxy-url', proxyUrl);
 
         // Redirect to proxy oauth endpoint
-        const redirectUri = window.location.origin + window.location.pathname;
+        let redirectUri = window.location.origin + window.location.pathname;
+        if (!redirectUri.endsWith('/') && !redirectUri.endsWith('.html')) {
+          redirectUri += '/';
+        }
         const authUrl = `${proxyUrl}/api/auth/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
         window.location.href = authUrl;
       }
@@ -1267,7 +1270,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const code = urlParams.get('code');
   if (code) {
     // Clear code parameter from URL immediately
-    const cleanUrl = window.location.origin + window.location.pathname;
+    let cleanUrl = window.location.origin + window.location.pathname;
+    if (!cleanUrl.endsWith('/') && !cleanUrl.endsWith('.html')) {
+      cleanUrl += '/';
+    }
     window.history.replaceState({}, document.title, cleanUrl);
 
     // Retrieve saved proxy URL to send exchange request
