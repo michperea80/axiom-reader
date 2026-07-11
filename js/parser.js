@@ -115,9 +115,28 @@ function normalizeRomanNumeralsInHeading(text) {
   });
 }
 
+function normalizeMeasurementUnits(text) {
+  let speech = text;
+
+  // Apply compound density units first. The standalone gravity rule below must
+  // never turn the "g" in "g/cm³" into "gee".
+  speech = speech.replace(
+    /(\d+(?:\.\d+)?)\s*g\s*\/\s*cm(?:³|3)(?![A-Za-z0-9])/gi,
+    '$1 grams per cubic centimeter'
+  );
+
+  // A gravity value is conventionally written without a space (for example,
+  // 2.1g or 1.9–2.6g). Keep ordinary spaced mass values such as "5 g"
+  // untouched, because those are normally grams.
+  speech = speech.replace(/(\d+(?:\.\d+)?)g\b/g, '$1 gee');
+
+  return speech;
+}
+
 function normalizeSpeechText(text, blockType = 'para') {
   let speech = text.replace(/\s+/g, ' ').trim();
   if (blockType === 'heading') speech = normalizeRomanNumeralsInHeading(speech);
+  speech = normalizeMeasurementUnits(speech);
   const map = speechWordMap();
   return speech.replace(/\b[A-Z0-9][A-Z0-9_-]{2,}\b/g, word => map[word] || word);
 }
