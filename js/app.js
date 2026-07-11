@@ -11,9 +11,27 @@ let activeSearchIdx = -1;
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
+  document.body.classList.toggle('reader-active', name === 'reader');
+  if (name !== 'reader') hideVoiceControls();
   if (typeof updatePlaybackControlsState === 'function') {
     updatePlaybackControlsState();
   }
+}
+
+function showVoiceControls() {
+  const panel = document.getElementById('voice-controls-panel');
+  if (!panel) return;
+  panel.classList.add('mobile-open');
+  panel.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('controls-open');
+}
+
+function hideVoiceControls() {
+  const panel = document.getElementById('voice-controls-panel');
+  if (!panel) return;
+  panel.classList.remove('mobile-open');
+  panel.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('controls-open');
 }
 
 async function readSupportedFile(file) {
@@ -614,6 +632,11 @@ document.getElementById('dir-input').addEventListener('change', e => {
 document.getElementById('open-file-btn').addEventListener('click', () =>
   document.getElementById('file-input').click()
 );
+document.getElementById('library-settings-btn').addEventListener('click', () => showScreen('settings'));
+document.getElementById('settings-back-btn').addEventListener('click', () => {
+  showScreen('library');
+  renderLibraryScreen();
+});
 document.getElementById('backup-data-btn').addEventListener('click', backupAppData);
 document.getElementById('restore-data-btn').addEventListener('click', () =>
   document.getElementById('restore-input').click()
@@ -649,6 +672,12 @@ document.getElementById('reader-back-btn').addEventListener('click', () => {
   stopTTS();
   showScreen('library');
   renderLibraryScreen();
+});
+
+document.getElementById('reader-tools-btn').addEventListener('click', showVoiceControls);
+document.getElementById('voice-controls-close-btn').addEventListener('click', hideVoiceControls);
+document.getElementById('voice-controls-panel').addEventListener('click', e => {
+  if (e.target.id === 'voice-controls-panel') hideVoiceControls();
 });
 
 document.getElementById('play-btn').addEventListener('click', toggleTTS);
@@ -843,6 +872,8 @@ document.addEventListener('keydown', e => {
     hideNoteModal();
   } else if (e.key === 'Escape' && document.getElementById('notes-panel').classList.contains('open')) {
     hideNotesPanel();
+  } else if (e.key === 'Escape' && document.getElementById('voice-controls-panel').classList.contains('mobile-open')) {
+    hideVoiceControls();
   } else if (e.key === 'Escape' && document.getElementById('search-bar').classList.contains('open')) {
     hideSearchBar();
   }

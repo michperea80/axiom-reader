@@ -95,6 +95,13 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   font-family: var(--font-ui);
 }
 
+.brand-mark {
+  width: auto;
+  height: 42px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
 /* Header bar on each viewport screen */
 .status-bar {
   display: flex;
@@ -113,6 +120,14 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   letter-spacing: -0.01em;
   text-transform: uppercase;
 }
+.diaspora-title-font,
+.status-bar-title h1,
+#doc-render h1,
+#doc-render h2,
+.db-header h3,
+.glow-card-header h3 {
+  font-family: 'Diaspora Title Open', var(--font-ui);
+}
 .status-bar-title p {
   font-family: var(--font-ui);
   font-size: 9px;
@@ -127,6 +142,13 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   letter-spacing: 0.2em;
   color: var(--text-muted);
   text-transform: uppercase;
+}
+.library-settings-btn {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  flex: 0 0 auto;
 }
 
 /* Dashboard Columns Grid */
@@ -145,6 +167,7 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
 }
 .col-main {
   height: 100%;
+  min-width: 0;
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -152,6 +175,7 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
 }
 .col-control {
   height: 100%;
+  min-width: 0;
   overflow-y: auto;
 }
 @media (max-width: 1024px) {
@@ -237,6 +261,10 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   letter-spacing: 0.3em;
   color: var(--primary);
   text-transform: uppercase;
+}
+.voice-controls-close {
+  display: none;
+  margin-left: auto;
 }
 .pulse-dot {
   width: 8px;
@@ -599,6 +627,14 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   vertical-align: middle;
 }
 
+.reader-tools-btn {
+  display: none;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+}
+
 .playback-btn-text {
   background: none;
   border: none;
@@ -642,6 +678,56 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   letter-spacing: 0.25em;
   color: var(--text-muted);
   text-transform: uppercase;
+}
+
+/* Library settings and hidden system file pickers */
+#settings-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 28px 24px;
+}
+.settings-section {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.settings-intro {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 20px;
+  max-width: 620px;
+}
+.settings-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.settings-actions-grid .open-file-btn {
+  background: var(--surface-container);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  min-height: 64px;
+  padding: 14px 16px;
+  text-align: center;
+  text-transform: uppercase;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+.settings-actions-grid .open-file-btn:hover {
+  background-color: rgba(70, 245, 224, 0.05);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+#file-input,
+#dir-input,
+#restore-input,
+#pronunciation-input {
+  display: none;
 }
 
 /* Screen Viewports scroll containers */
@@ -1616,5 +1702,244 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   #mini-player .mini-play-btn .material-symbols-outlined {
     font-size: 28px;
     font-variation-settings: 'FILL' 1;
+  }
+}
+
+/* =================================================
+   Mobile reader: one-column, scrollable, and width-safe
+   ================================================= */
+@media (max-width: 1024px) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  body {
+    padding-bottom: 0;
+  }
+
+  body.reader-active {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .main-content,
+  .terminal-grid,
+  .col-main,
+  .screen,
+  .screen.active {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .terminal-grid {
+    display: block;
+    padding: 12px;
+  }
+
+  .col-main {
+    width: 100%;
+  }
+
+  .status-bar,
+  .status-bar-title,
+  .reader-title,
+  #file-name,
+  #lib-body,
+  #browse-file-list,
+  #settings-body,
+  #reader-main,
+  #doc-view,
+  #doc-render,
+  .panel-section,
+  .voice-control-row,
+  .control-dropdown-grid,
+  .control-actions-grid {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  #lib-body,
+  #browse-file-list,
+  #settings-body {
+    overflow: visible;
+    padding-bottom: 24px;
+  }
+
+  #reader-main {
+    display: block;
+  }
+
+  #doc-view {
+    position: static;
+    overflow: visible;
+    padding: 20px 16px 32px;
+  }
+
+  #doc-render {
+    overflow-wrap: anywhere;
+  }
+
+  #doc-render table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .reader-tools-btn,
+  .voice-controls-close {
+    display: inline-flex;
+  }
+
+  .col-control {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 850;
+    height: 100dvh;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    background: rgba(3, 6, 15, 0.82);
+  }
+
+  .col-control.mobile-open {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .col-control .glow-card {
+    width: 100%;
+    min-height: 0 !important;
+    padding: 18px 16px;
+    overflow: visible;
+  }
+
+  .col-control .glow-card::after {
+    width: 140px;
+    height: 140px;
+    left: calc(100% - 140px);
+    top: -55px;
+  }
+
+  body.controls-open {
+    overflow: hidden;
+  }
+
+  body:not(.reader-active) #mini-player {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .terminal-grid {
+    padding: 0;
+  }
+
+  .col-main {
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .status-bar {
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .status-bar-meta {
+    display: none;
+  }
+
+  .library-settings-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-mark {
+    height: 34px;
+  }
+
+  .status-bar-title {
+    width: 100%;
+  }
+
+  .status-bar-title h1 {
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+  }
+
+  .status-bar-title p {
+    font-size: 8px;
+    letter-spacing: 0.18em;
+  }
+
+  .reader-title {
+    width: 100%;
+  }
+
+  #file-name {
+    flex: 1 1 auto;
+  }
+
+  .reader-tools-btn,
+  .topbar-back {
+    width: 34px;
+    height: 34px;
+  }
+
+  #doc-render p {
+    font-size: 0.98rem;
+    line-height: 1.7;
+  }
+
+  #doc-render h1 {
+    font-size: 1.22rem;
+    letter-spacing: 0.05em;
+  }
+
+  #doc-render h2 {
+    font-size: 1.03rem;
+    letter-spacing: 0.04em;
+  }
+
+  .glow-card-header h3 {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .voice-control-row,
+  .control-dropdown-grid {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .control-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #settings-body {
+    padding: 20px 16px 28px;
+  }
+
+  .settings-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .notes-drawer {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .note-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .note-dialog,
+  .tts-settings-dialog {
+    width: 100%;
+    max-height: 92dvh;
   }
 }

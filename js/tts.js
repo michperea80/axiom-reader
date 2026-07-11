@@ -252,7 +252,7 @@ const ADVANCED_GEMINI_VOICES = [
 const TTS_ENGINES = [
   { id: 'legacy', name: 'Legacy Speech synthesis', desc: 'Local processor offline speech module synth block', mode: 'offline' },
   { id: 'chirp', name: 'Chirp 3 HD Web-API', desc: 'Google Cloud high fidelity hyper-resonant neural stream', mode: 'proxy' },
-  { id: 'gemini', name: 'Gemini 3.1 Pro Audio', desc: 'Bespoke AI voice generation for compiled episode exports', mode: 'proxy' }
+  { id: 'gemini', name: 'Gemini 3.1 Flash TTS (Preview)', desc: 'Higher-cost voice generation for intentional sections and exports', mode: 'proxy' }
 ];
 
 
@@ -272,24 +272,63 @@ let audioAnalyser = null;
 let visualizerAnimationId = null;
 let visualizerSpike = 0;
 
-// Rate Limiting: max 3 live generation calls per minute to stay safe from limits
-const apiRequestTimestamps = [];
-async function acquireRequestSlot() {
-  while (true) {
-    const now = Date.now();
-    while (apiRequestTimestamps.length > 0 && apiRequestTimestamps[0] < now - 60000) {
-      apiRequestTimestamps.shift();
-    }
-    if (apiRequestTimestamps.length < 3) {
-      apiRequestTimestamps.push(now);
+// Cloud generation is deliberately conservative. Chirp gets enough capacity to
+// stay ahead of playback once text is chunked; Gemini remains limited because it
+// is intended for intentional, higher-cost generation rather than live reading.
+const API_REQUESTS_PER_MINUTE = {
+  CHIRP3_HD: 3,
+  GEMINI: 1,
+};
+const apiRequestTimestamps = new Map();
+
+function createAbortError() {
+  return new DOMException('Audio generation was cancelled.', 'AbortError');
+}
+
+function waitForSlot(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createAbortError());
       return;
     }
-    const waitTime = (apiRequestTimestamps[0] + 60000) - now;
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer);
+      reject(createAbortError());
+    }, { once: true });
+  });
+}
+
+async function acquireRequestSlot(engine, signal) {
+  const requestLimit = API_REQUESTS_PER_MINUTE[engine] || API_REQUESTS_PER_MINUTE.CHIRP3_HD;
+  const timestamps = apiRequestTimestamps.get(engine) || [];
+  apiRequestTimestamps.set(engine, timestamps);
+
+  while (true) {
+    if (signal?.aborted) throw createAbortError();
+    const now = Date.now();
+    while (timestamps.length > 0 && timestamps[0] < now - 60000) {
+      timestamps.shift();
+    }
+    if (timestamps.length < requestLimit) {
+      timestamps.push(now);
+      return;
+    }
+    const waitTime = (timestamps[0] + 60000) - now;
     if (waitTime > 0) {
-      await new Promise(resolve => setTimeout(resolve, waitTime + 100));
+      await waitForSlot(waitTime + 100, signal);
     }
   }
 }
+
+// A chunk is large enough to cover roughly 20–45 seconds of narration. This
+// lets the reader prepare audio while the current chunk is playing instead of
+// making the listener wait after every sentence.
+const ADVANCED_CHUNK_TARGET_CHARS = 600;
+const ADVANCED_CHUNK_MAX_CHARS = 850;
+const ADVANCED_PREFETCH_BY_ENGINE = { CHIRP3_HD: 2, GEMINI: 1 };
+const advancedAudioRequests = new Map();
+const advancedRequestControllers = new Set();
 
 const SYSTEM_VOICE_VALUE = 'system';
 const SAVED_VOICE_KEY = 'axiom-reader-voice';
@@ -404,9 +443,9 @@ function loadVoices() {
   const mode = localStorage.getItem('axiom-tts-mode') || 'offline';
   
   if (mode === 'proxy') {
-    // 2. Gemini 3.1 Pro Audio (Bespoke AI Synthesis)
+    // 2. Gemini 3.1 Flash TTS (stream-capable provider model)
     const geminiGroup = document.createElement('optgroup');
-    geminiGroup.label = 'Gemini 3.1 Pro Audio (AI Synthesis)';
+    geminiGroup.label = 'Gemini 3.1 Flash TTS (AI Synthesis)';
     ADVANCED_GEMINI_VOICES.forEach(gv => {
       const option = document.createElement('option');
       option.value = gv.id;
@@ -498,124 +537,183 @@ function speakOne(sentenceIdx, token, attempt = 0, forceSystemVoice = false) {
       stopTTS();
     }
   } else {
-    speakAdvanced(item, sentenceIdx, token);
+    speakAdvanced(createAdvancedChunk(sentenceIdx), token);
+  }
+}
+
+function createAdvancedChunk(startIdx, list = ttsList) {
+  const start = Math.max(0, Math.min(list.length - 1, startIdx));
+  const items = [];
+  let characterCount = 0;
+  let endIdx = start;
+
+  for (let currentIdx = start; currentIdx < list.length; currentIdx += 1) {
+    const item = list[currentIdx];
+    const text = (item?.speechText || item?.text || '').trim();
+    if (!text) continue;
+
+    const nextLength = characterCount + (items.length ? 1 : 0) + text.length;
+    if (items.length && nextLength > ADVANCED_CHUNK_MAX_CHARS) break;
+
+    items.push(text);
+    characterCount = nextLength;
+    endIdx = currentIdx;
+
+    if (characterCount >= ADVANCED_CHUNK_TARGET_CHARS) break;
+  }
+
+  return {
+    startIdx: start,
+    endIdx,
+    blockIdx: list[start]?.blockIdx,
+    speechText: items.join(' '),
+  };
+}
+
+function createAdvancedChunks(list = ttsList) {
+  const chunks = [];
+  let nextIdx = 0;
+  while (nextIdx < list.length) {
+    const chunk = createAdvancedChunk(nextIdx, list);
+    chunks.push(chunk);
+    nextIdx = chunk.endIdx + 1;
+  }
+  return chunks;
+}
+
+function getAdvancedCacheKey({ engine, voiceId, speed, text }) {
+  // Gemini playback speed is applied in the browser, so it must not create a
+  // second paid generation of identical audio.
+  const synthesisSpeed = engine === 'CHIRP3_HD' ? speed : 'native';
+  return `tts:v2:${engine}:${voiceId}:${synthesisSpeed}:${text}`;
+}
+
+function cancelAdvancedAudioRequests() {
+  advancedRequestControllers.forEach(controller => controller.abort());
+  advancedRequestControllers.clear();
+  advancedAudioRequests.clear();
+}
+
+async function requestAdvancedAudio(chunk) {
+  const voiceSel = document.getElementById('voice-sel');
+  const voiceId = voiceSel ? voiceSel.value : 'en-US-Chirp3-HD-Charon';
+  const speed = parseFloat(document.getElementById('rate-slider').value) || 1.0;
+  const engine = getSelectedVoiceEngine();
+  const text = chunk.speechText.trim();
+  const cacheKey = getAdvancedCacheKey({ engine, voiceId, speed, text });
+
+  const cachedAudio = await getCachedAudio(cacheKey);
+  if (cachedAudio) return cachedAudio;
+
+  const existingRequest = advancedAudioRequests.get(cacheKey);
+  if (existingRequest) return existingRequest;
+
+  const controller = new AbortController();
+  advancedRequestControllers.add(controller);
+
+  const request = (async () => {
+    await acquireRequestSlot(engine, controller.signal);
+
+    const proxyUrl = getProxyUrl();
+    if (!proxyUrl) {
+      throw new Error('Proxy server URL is not configured. Open TTS Engine Settings to set it up.');
+    }
+
+    const headers = { 'Content-Type': 'application/json' };
+    const githubToken = localStorage.getItem('axiom-github-token');
+    if (githubToken) headers.Authorization = `Bearer ${githubToken}`;
+
+    const response = await fetch(`${proxyUrl}/api/tts`, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({ text, voice: voiceId, speed, engine })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.json().catch(() => ({}));
+      const retryAfter = response.headers.get('Retry-After');
+      const retryHint = retryAfter ? ` Try again in about ${retryAfter} seconds.` : '';
+      throw new Error((errorText.error || `Proxy response failure: ${response.status}`) + retryHint);
+    }
+
+    const responseJson = await response.json();
+    const audioData = responseJson.data;
+    if (!audioData) throw new Error('No audio data returned by the voice service.');
+
+    await setCachedAudio(cacheKey, audioData);
+    return audioData;
+  })();
+
+  advancedAudioRequests.set(cacheKey, request);
+  const cleanup = () => {
+    advancedRequestControllers.delete(controller);
+    if (advancedAudioRequests.get(cacheKey) === request) advancedAudioRequests.delete(cacheKey);
+  };
+  request.then(cleanup, cleanup);
+  return request;
+}
+
+async function prefetchAdvancedAudio(startIdx, token, engine) {
+  const lookAhead = ADVANCED_PREFETCH_BY_ENGINE[engine] || 0;
+  let nextIdx = startIdx;
+
+  for (let count = 0; count < lookAhead && nextIdx < ttsList.length; count += 1) {
+    if (!playing || token !== queueToken) return;
+    const chunk = createAdvancedChunk(nextIdx);
+    try {
+      await requestAdvancedAudio(chunk);
+    } catch (err) {
+      if (err?.name !== 'AbortError') console.warn('Audio prefetch skipped:', err.message || err);
+      return;
+    }
+    nextIdx = chunk.endIdx + 1;
   }
 }
 
 
 // --- SECTION 6: ADVANCED WEB AUDIO SYNTHESIS & DECODING ---
-async function speakAdvanced(item, sentenceIdx, token) {
+async function speakAdvanced(chunk, token) {
   ensureAudioCtx();
-  
+
   if (!playing || token !== queueToken) return;
 
+  const item = ttsList[chunk.startIdx];
+  if (!item || !chunk.speechText) return;
+
   // Highlight active visual segment inside the doc viewer
-  idx = sentenceIdx;
+  idx = chunk.startIdx;
   highlightBlock(item.blockIdx);
   updatePos();
   updateMediaSession('playing');
-
-  // Strip Markdown symbols from speech target text
-  const cleanText = (item.speechText || item.text)
-    .replace(/\*\*/g, '')
-    .replace(/\*/g, '')
-    .replace(/^>\s*/gm, '');
-
-  if (!cleanText.trim()) {
-    // If empty text line, jump past with a minor gap
-    scheduleSpeech(sentenceIdx + 1, token, 70);
-    return;
-  }
-
-  const voiceSel = document.getElementById('voice-sel');
-  const voiceId = voiceSel ? voiceSel.value : 'en-US-Chirp3-HD-Charon';
-  const speed = parseFloat(document.getElementById('rate-slider').value) || 1.0;
   const engine = getSelectedVoiceEngine();
 
-  // Distinct key for local storage caching
-  const cacheKey = `tts_${voiceId}_${speed}_${cleanText}`;
-  let base64Audio = null;
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.classList.add('generating-audio');
+  showLoadingBar();
+  updateLoadingBar(20);
 
+  let base64Audio;
   try {
-    base64Audio = await getCachedAudio(cacheKey);
+    base64Audio = await requestAdvancedAudio(chunk);
   } catch (err) {
-    console.error("Cache database retrieve error:", err);
-  }
-
-  // If missing from local DB, fetch audio from API proxy
-  if (!base64Audio) {
-    const playBtn = document.getElementById('play-btn');
-    if (playBtn) playBtn.classList.add('generating-audio');
-    showLoadingBar();
-    updateLoadingBar(10); // Phase: Queued
-
+    if (err?.name === 'AbortError') return;
+    console.error('Advanced fetch failed:', err);
+    const notice = document.createElement('div');
+    notice.className = 'tts-error-toast';
+    notice.textContent = `Vocal synthesis proxy failed: ${err.message}. Reverting to standard local device.`;
+    document.body.appendChild(notice);
+    setTimeout(() => notice.remove(), 4000);
     try {
-      // Respect our polite client-side rate limit slot
-      await acquireRequestSlot();
-      updateLoadingBar(25); // Phase: Slot acquired
-
-      const proxyUrl = getProxyUrl();
-      if (!proxyUrl) {
-        throw new Error("Proxy server URL is not configured. Open TTS Engine Settings to set it up.");
-      }
-
-      const headers = { 'Content-Type': 'application/json' };
-      const githubToken = localStorage.getItem('axiom-github-token');
-      if (githubToken) {
-        headers['Authorization'] = `Bearer ${githubToken}`;
-      }
-
-      updateLoadingBar(50); // Phase: Sending to proxy server
-      const response = await fetch(`${proxyUrl}/api/tts`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          text: cleanText,
-          voice: voiceId,
-          speed: speed,
-          engine: engine
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.json().catch(() => ({}));
-        throw new Error(errorText.error || `Proxy response failure: ${response.status}`);
-      }
-
-      updateLoadingBar(75); // Phase: Response received
-      const responseJson = await response.json();
-      base64Audio = responseJson.data;
-
-      if (!base64Audio) throw new Error("No data string inside response payload");
-
-      // Save to IndexedDB to preserve token quotas
-      try {
-        await setCachedAudio(cacheKey, base64Audio);
-      } catch (err) {
-        console.error("Cache save database write error:", err);
-      }
-    } catch (err) {
-      console.error("Advanced fetch failed:", err);
-      
-      // Fallback message notice
-      const notice = document.createElement('div');
-      notice.className = 'tts-error-toast';
-      notice.textContent = `Vocal synthesis proxy failed: ${err.message}. Reverting to standard local device.`;
-      document.body.appendChild(notice);
-      setTimeout(() => notice.remove(), 4000);
-      
-      // Fallback immediately to standard browser speech synthesis for this segment
-      try {
-        currentUtterance = buildUtterance(item, sentenceIdx, token, 0, true);
-        synth.speak(currentUtterance);
-      } catch (_) {
-        stopTTS();
-      }
-      return;
-    } finally {
-      if (playBtn) playBtn.classList.remove('generating-audio');
-      hideLoadingBar();
+      currentUtterance = buildUtterance(item, chunk.startIdx, token, 0, true);
+      synth.speak(currentUtterance);
+    } catch (_) {
+      stopTTS();
     }
+    return;
+  } finally {
+    if (playBtn) playBtn.classList.remove('generating-audio');
+    hideLoadingBar();
   }
 
   if (!playing || token !== queueToken) return;
@@ -682,17 +780,18 @@ async function speakAdvanced(item, sentenceIdx, token) {
       if (!playing || token !== queueToken) return;
       saveCurrentReadPosition();
 
-      if (sentenceIdx >= ttsList.length - 1) {
+      if (chunk.endIdx >= ttsList.length - 1) {
         stopTTS();
         return;
       }
 
-      idx = sentenceIdx + 1;
+      idx = chunk.endIdx + 1;
       scheduleSpeech(idx, token, 70);
     };
 
     hideLoadingBar(); // Audio playing — hide progress bar
     sourceNode.start(0);
+    void prefetchAdvancedAudio(chunk.endIdx + 1, token, engine);
 
   } catch (err) {
     console.error("Audio buffer setup failed:", err);
@@ -882,6 +981,7 @@ function stopTTS() {
   saveCurrentReadPosition();
   playing = false;
   queueToken += 1;
+  cancelAdvancedAudioRequests();
   clearSpeechTimer();
   currentUtterance = null;
   setBtn('play');
@@ -1016,6 +1116,10 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
     const voiceId = voiceSel ? voiceSel.value : 'en-US-Chirp3-HD-Charon';
     const speed = parseFloat(document.getElementById('rate-slider').value) || 1.0;
     const engine = getSelectedVoiceEngine();
+    if (engine === 'LEGACY') {
+      throw new Error('Choose a Chirp or Gemini voice before compiling cloud audio.');
+    }
+    const batchSegments = createAdvancedChunks(list);
 
     const allBytes = [];
     let totalDataSize = 0;
@@ -1029,13 +1133,14 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
       return new Uint8Array(alignedLen);
     };
 
-    // Sequentially process each text block in the document playlist
-    for (let sIdx = 0; sIdx < list.length; sIdx++) {
-      const segment = list[sIdx];
-      const progressPct = Math.round((sIdx / list.length) * 100);
+    // Sequentially process narration chunks so long exports use far fewer
+    // provider requests than sentence-by-sentence generation.
+    for (let sIdx = 0; sIdx < batchSegments.length; sIdx++) {
+      const segment = batchSegments[sIdx];
+      const progressPct = Math.round((sIdx / batchSegments.length) * 100);
       
       if (downloadBtn) {
-        downloadBtn.textContent = `Compiling segment ${sIdx + 1} of ${list.length} (${progressPct}%)`;
+        downloadBtn.textContent = `Compiling narration chunk ${sIdx + 1} of ${batchSegments.length} (${progressPct}%)`;
       }
 
       // Check if item text is a section divider or page break symbol
@@ -1053,7 +1158,7 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
 
       if (!cleanText.trim()) continue;
 
-      const cacheKey = `tts_${voiceId}_${speed}_${cleanText}`;
+      const cacheKey = getAdvancedCacheKey({ engine, voiceId, speed, text: cleanText });
       let base64Audio = "";
 
       // 1. Try to load from database cache
@@ -1066,7 +1171,7 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
       // 2. Fetch live via network if cache missed
       if (!base64Audio) {
         try {
-          await acquireRequestSlot();
+          await acquireRequestSlot(engine);
 
           const proxyUrl = getProxyUrl();
           if (!proxyUrl) {
@@ -1200,15 +1305,16 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
 
 // --- SECTION 10: VOICE PREVIEW FUNCTION ---
 // Plays a short test sentence using the currently selected voice engine.
-// IMPORTANT: Gemini previews are BLOCKED to conserve the strict 10 requests/day quota.
+// Gemini previews are blocked because this reader reserves Gemini requests for
+// intentional narration rather than short disposable tests.
 function previewTTSVoice() {
   console.log('[AXIOM Preview] previewTTSVoice called');
   const engine = getSelectedVoiceEngine();
   console.log('[AXIOM Preview] Current engine:', engine);
 
-  // Block Gemini previews — daily quota is too limited (10/day) to spend on tests
+  // Block Gemini previews so quota is kept for actual narration.
   if (engine === 'GEMINI') {
-    alert('Preview is disabled for Gemini 3.1 Pro voices.\n\nGemini has a strict limit of 10 requests per day. Use the main Play button to hear this voice during document reading instead.');
+    alert('Preview is disabled for Gemini voices.\n\nGemini generation is reserved for intentional narration. Use Chirp for quick voice checks, or use Gemini for a selected passage or export.');
     return;
   }
 
@@ -1349,13 +1455,14 @@ document.addEventListener('DOMContentLoaded', () => {
     proxySection.style.display = needsProxy ? 'block' : 'none';
     githubSection.style.display = needsProxy ? 'block' : 'none';
 
-    // Show quota information for Gemini
+    // Show the reader's conservative live-generation policy. The Google project
+    // remains the source of truth for its actual provider quota.
     if (pendingEngine === 'gemini') {
       quotaSection.style.display = 'block';
-      quotaInfo.innerHTML = '<span class="tts-quota-badge">⚠ DAILY LIMIT: 10 REQUESTS</span><br>Rate: max 3 per minute<br>Preview is disabled to conserve quota.';
+      quotaInfo.innerHTML = '<span class="tts-quota-badge">INTENTIONAL NARRATION MODE</span><br>Reader cap: 1 new chunk per minute<br>Preview is disabled to preserve your provider quota.';
     } else if (pendingEngine === 'chirp') {
       quotaSection.style.display = 'block';
-      quotaInfo.innerHTML = 'Rate: max 3 requests per minute<br>Responses are cached locally to save quota.';
+      quotaInfo.innerHTML = 'Reader cap: 3 new chunks per minute<br>Upcoming chunks are prepared and cached locally to keep playback continuous.';
     } else {
       quotaSection.style.display = 'none';
     }

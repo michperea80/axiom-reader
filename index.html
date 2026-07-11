@@ -11,7 +11,9 @@
     content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https://*.vercel.app https://github.com https://api.github.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; worker-src 'self'">
   
   <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="icon" type="image/svg+xml" href="./icons/AXIOM-Monos-Only.svg" />
+  <link rel="apple-touch-icon" href="./icons/AXIOM_Monos_200.png" />
+  <link rel="stylesheet" href="./font/diaspora-title.css" />
   <link rel="stylesheet" href="./css/style.css" />
   <link rel="stylesheet" href="./css/library.css" />
   <title>AXIOM // Reader</title>
@@ -43,14 +45,13 @@
           <!-- Sub-header metadata status -->
           <div class="status-bar">
             <div class="status-bar-title" style="display:flex; align-items:center; gap:12px">
-              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:24px; height:24px; color:var(--primary)">
-                <use href="#logo-sym"/>
-              </svg>
+              <img class="brand-mark" src="./icons/AXIOM-Monos-Only.svg" alt="AXIOM" />
               <div>
                 <p>SYSTEM STATUS: CONNECTED</p>
-                <h1 class="ui-chrome">AXIOM_READER // <span style="color:var(--primary); font-style:italic">SC_32</span></h1>
+                <h1 class="diaspora-title-font">AXIOM_READER // <span style="color:var(--primary); font-style:italic">SC_32</span></h1>
               </div>
             </div>
+            <button class="library-settings-btn icon-btn material-symbols-outlined" id="library-settings-btn" title="Open library settings" aria-label="Open library settings">settings</button>
             <div class="status-bar-meta">
               <div>LOCATION: SECTOR_07</div>
               <div>UPTIME: 428:12:09</div>
@@ -59,14 +60,10 @@
           
           <!-- Library Body content -->
           <div id="lib-body">
-            <!-- Database & utility action Buttons -->
+            <!-- Library action buttons -->
             <div id="lib-browse-section">
               <button id="open-folder-btn" class="open-folder-btn">📁 Open Folder</button>
               <button id="open-file-btn" class="open-file-btn">📄 Open File</button>
-              <button id="backup-data-btn" class="open-file-btn">Backup data</button>
-              <button id="restore-data-btn" class="open-file-btn">Restore data</button>
-              <button id="export-pronunciation-btn" class="open-file-btn">Export pronunciation</button>
-              <button id="import-pronunciation-btn" class="open-file-btn">Import pronunciation</button>
             </div>
             
             <!-- Recent archives -->
@@ -78,6 +75,37 @@
               </div>
               <div class="recent-list" id="lib-recents-list"></div>
             </div>
+          </div>
+        </div>
+
+        <!-- Screen: Library Settings -->
+        <div id="screen-settings" class="screen">
+          <div class="status-bar">
+            <div class="status-bar-title">
+              <p>READER_CONFIGURATION: ACTIVE</p>
+              <h1 class="ui-chrome" style="display:flex; align-items:center; gap:8px">
+                <button class="topbar-back icon-btn material-symbols-outlined" id="settings-back-btn" title="Back to Library">arrow_back</button>
+                <span>LIBRARY_SETTINGS</span>
+              </h1>
+            </div>
+            <div class="status-bar-meta">
+              <div>LOCAL_DATA: SECURED</div>
+            </div>
+          </div>
+          <div id="settings-body">
+            <section class="settings-section" aria-labelledby="settings-data-title">
+              <div class="db-header">
+                <h3 id="settings-data-title">DATA_AND_PRONUNCIATION</h3>
+                <div class="db-divider"></div>
+              </div>
+              <p class="settings-intro">Save or restore your AXIOM Reader data, or move your custom pronunciation rules between devices.</p>
+              <div class="settings-actions-grid">
+                <button id="backup-data-btn" class="open-file-btn">Backup Data</button>
+                <button id="restore-data-btn" class="open-file-btn">Restore Data</button>
+                <button id="export-pronunciation-btn" class="open-file-btn">Export Pronunciation</button>
+                <button id="import-pronunciation-btn" class="open-file-btn">Import Pronunciation</button>
+              </div>
+            </section>
           </div>
         </div>
         
@@ -103,9 +131,10 @@
           <div class="status-bar">
             <div class="status-bar-title">
               <p>PARSER: ACTIVE // SYNTHESIS: READY</p>
-              <h1 class="ui-chrome" style="display:flex; align-items:center; gap:8px; max-width: 100%">
+              <h1 class="ui-chrome reader-title" style="display:flex; align-items:center; gap:8px; max-width: 100%">
                 <button class="topbar-back icon-btn material-symbols-outlined" id="reader-back-btn" title="Back to Library">arrow_back</button>
                 <span id="file-name" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap">No file loaded</span>
+                <button class="reader-tools-btn icon-btn material-symbols-outlined" id="reader-tools-btn" title="Open voice settings and reader tools" aria-label="Open voice settings and reader tools" aria-haspopup="dialog">settings_voice</button>
               </h1>
             </div>
             <div class="status-bar-meta">
@@ -139,11 +168,12 @@
       </div>
       
       <!-- Right Column: Persistent Vocal & Review Sidebar Control Panel -->
-      <div class="col-control">
+      <div class="col-control" id="voice-controls-panel" aria-hidden="true">
         <div class="glow-card glow-active" style="min-height:100%">
           <div class="glow-card-header">
             <div class="pulse-dot"></div>
             <h3>VOCAL_SYNTHESIS_CONTROL</h3>
+            <button class="voice-controls-close icon-btn material-symbols-outlined" id="voice-controls-close-btn" title="Close voice settings" aria-label="Close voice settings">close</button>
           </div>
           
           <!-- Audio visualizer panel -->

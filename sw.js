@@ -1,4 +1,4 @@
-const CACHE = 'axiom-v19';
+const CACHE = 'axiom-v27';
 const ASSETS = [
   './',
   './index.html',
@@ -12,8 +12,12 @@ const ASSETS = [
   './vendor/pdfjs/pdf.min.mjs',
   './vendor/pdfjs/pdf.worker.min.mjs',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+  './font/diaspora-title.css',
+  './font/DiasporaTitleOpen-Regular.woff2',
+  './font/DiasporaTitleOpen-Bold.woff2',
+  './icons/AXIOM_Monos_200.png',
+  './icons/AXIOM-Monos.svg',
+  './icons/AXIOM-Monos-Only.svg',
 ];
 
 self.addEventListener('install', e =>
