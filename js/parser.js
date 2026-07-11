@@ -278,10 +278,72 @@ function stripInline(text) {
     .trim();
 }
 
+// Chirp rejects unusually long text between sentence-ending marks. World-bible
+// fact sheets often use label/value lists rather than periods, so break those
+// safely before they reach the cloud voice service.
+const MAX_TTS_SENTENCE_CHARS = 280;
+
+function finishSpeechSentence(text) {
+  const trimmed = text.trim().replace(/[;,:—–-]+$/, '').trim();
+  if (!trimmed) return '';
+  return /[.!?…]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+function splitLongSpeechUnit(text, maxChars = MAX_TTS_SENTENCE_CHARS) {
+  let remaining = text.replace(/\s+/g, ' ').trim();
+  const parts = [];
+
+  while (remaining.length > maxChars) {
+    const window = remaining.slice(0, maxChars + 1);
+    let cutAt = -1;
+
+    // Prefer punctuation and the start of the next label/value pair. Each
+    // option keeps the spoken result natural while guaranteeing a boundary.
+    const boundaries = [
+      /[.!?…;]\s+/g,
+      /\s+(?=[A-Z][A-Za-z0-9 /-]{2,}:)/g,
+      /\s+[—–-]\s+/g,
+      /\s+/g,
+    ];
+    for (const [boundaryIndex, boundary] of boundaries.entries()) {
+      for (const match of window.matchAll(boundary)) {
+        if (match.index >= Math.floor(maxChars * 0.45)) {
+          cutAt = match.index + match[0].length;
+          // Label matches can overlap (for example, "Magnetic Field:" and
+          // "Field:"). Keep the first complete label, not the nested word.
+          if (boundaryIndex === 1) break;
+        }
+      }
+      if (cutAt > 0) break;
+    }
+
+    if (cutAt <= 0) cutAt = maxChars;
+    const part = finishSpeechSentence(remaining.slice(0, cutAt));
+    if (part) parts.push(part);
+    remaining = remaining.slice(cutAt).trim();
+  }
+
+  if (remaining) parts.push(finishSpeechSentence(remaining));
+  return parts;
+}
+
 function splitSentences(text) {
   if (!text.trim()) return [];
   const parts = text.split(/(?<=[.!?…])\s+(?=[A-Z"'(\[])|\n\n+/);
-  return parts.map(s => s.trim()).filter(s => s.length > 2);
+  return parts
+    .flatMap(part => splitLongSpeechUnit(part))
+    .filter(part => part.length > 2);
+}
+
+function prepareSpeechSegments(markdownText) {
+  // Preserve bold fact-sheet labels as true spoken boundaries before inline
+  // Markdown is removed. Example: "**Mass:** 4.8 … **Radius:** 1.51 …"
+  // becomes two natural sentences instead of one oversized provider request.
+  const withLabelBoundaries = markdownText.replace(
+    /(\S)\s+\*\*([A-Za-z][^*\n]{1,80}):\*\*/g,
+    (match, precedingChar, label) => `${precedingChar}${/[.!?…]$/.test(precedingChar) ? ' ' : '. '}**${label}:**`
+  );
+  return stripInline(withLabelBoundaries);
 }
 
 function buildDoc(blocks, h1Idx, infocardStart, infocardEnd, endMatterIdx) {
@@ -341,13 +403,13 @@ function buildDoc(blocks, h1Idx, infocardStart, infocardEnd, endMatterIdx) {
     if (block.type === 'para') {
       const display = block.text.split('\n').map(inline).join(' ');
       if (isEndMatter) { html += `<p class="endmatter">${display}</p>`; }
-      else { splitSentences(stripInline(block.text)).forEach(s => addTtsItem(s, bi, 'para')); html += `<p${eid}>${display}</p>`; }
+      else { splitSentences(prepareSpeechSegments(block.text)).forEach(s => addTtsItem(s, bi, 'para')); html += `<p${eid}>${display}</p>`; }
       return;
     }
     if (block.type === 'blockquote') {
       const display = block.text.split('\n').map(inline).join('<br>');
       if (isEndMatter) { html += `<blockquote class="endmatter">${display}</blockquote>`; }
-      else { splitSentences(stripInline(block.text)).forEach(s => addTtsItem(s, bi, 'blockquote')); html += `<blockquote${eid}>${display}</blockquote>`; }
+      else { splitSentences(prepareSpeechSegments(block.text)).forEach(s => addTtsItem(s, bi, 'blockquote')); html += `<blockquote${eid}>${display}</blockquote>`; }
       return;
     }
     if (block.type === 'list') {
