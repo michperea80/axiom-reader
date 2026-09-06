@@ -72,6 +72,9 @@ body.reader-active #mini-player { display:grid; grid-template-columns:1fr auto 1
 #mini-player button { min-width:44px; min-height:44px; padding:8px; background:transparent; border:1px solid transparent; color:var(--text); cursor:pointer; }
 #mini-player button:hover { background:var(--surface-container); border-color:var(--border); }
 #mini-player .mini-play-btn { width:52px; background:var(--primary); color:#061a1b; }
+#mini-player .mini-play-btn:hover,
+#mini-player .mini-play-btn:focus-visible { background:var(--surface-container); border-color:var(--primary); color:var(--primary); }
+#mini-player .mini-play-btn .material-symbols-outlined { color:inherit; }
 #mini-player .mini-pos { position:static; font:12px var(--font-ui); white-space:nowrap; }
 #mini-player #follow-btn { font:12px var(--font-ui); border-color:var(--border); color:var(--primary); }
 #mini-player #follow-btn[aria-pressed=false] { color:var(--gold); }
