@@ -1,9 +1,12 @@
-const CACHE = 'axiom-v33';
+const CACHE = 'axiom-v45';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './css/library.css',
+  './css/reader-ui.css',
+  './js/reading-follow.js',
+  './js/reader-ui.js',
   './js/parser.js',
   './js/tts.js',
   './js/library.js',

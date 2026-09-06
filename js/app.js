@@ -7,23 +7,28 @@ let longPressStart = null;
 let suppressNextClick = false;
 let searchMatches = [];
 let activeSearchIdx = -1;
+let noteReturnFocus = null;
+let notesReturnFocus = null;
 
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
   document.body.classList.toggle('reader-active', name === 'reader');
   if (name !== 'reader') hideVoiceControls();
+  else if (matchMedia('(min-width:901px)').matches) showVoiceControls(false);
   if (typeof updatePlaybackControlsState === 'function') {
     updatePlaybackControlsState();
   }
 }
 
-function showVoiceControls() {
+function showVoiceControls(focus = true) {
   const panel = document.getElementById('voice-controls-panel');
   if (!panel) return;
   panel.classList.add('mobile-open');
   panel.setAttribute('aria-hidden', 'false');
   document.body.classList.add('controls-open');
+  document.getElementById('reader-tools-btn').setAttribute('aria-expanded', 'true');
+  if (focus) document.getElementById('voice-controls-close-btn').focus();
 }
 
 function hideVoiceControls() {
@@ -32,6 +37,8 @@ function hideVoiceControls() {
   panel.classList.remove('mobile-open');
   panel.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('controls-open');
+  document.getElementById('reader-tools-btn').setAttribute('aria-expanded', 'false');
+  if (panel.contains(document.activeElement)) document.getElementById('reader-tools-btn').focus();
 }
 
 async function readSupportedFile(file) {
@@ -53,6 +60,8 @@ function loadFile(src) {
     clearSearch();
     hideNotesPanel();
     idx = 0;
+    setFollowAudio(true);
+    if (window.CSS?.highlights) CSS.highlights.delete('spoken-passage');
     currentRecentId = src.recentId || null;
     currentFileName = src.name;
 
@@ -62,6 +71,8 @@ function loadFile(src) {
     document.getElementById('doc-render').innerHTML =
       buildDoc(currentBlocks, h1Idx, infocardStart, infocardEnd, endMatterIdx);
     document.getElementById('file-name').textContent = src.name;
+    document.getElementById('reader-word-count').textContent = `${stripInline(content).trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`;
+    document.getElementById('doc-view').scrollTop = 0;
 
     document.getElementById('load-screen').style.display = 'none';
     document.getElementById('doc-view').style.display    = 'block';
@@ -70,8 +81,8 @@ function loadFile(src) {
     updateMediaSession('none');
     setupMediaSession();
 
-    if (src.resumePosition && src.resumePosition > 0 && src.resumePosition < ttsList.length) {
-      idx = src.resumePosition;
+    if (src.resumeAnchor || src.resumePosition > 0) {
+      idx = resolveReadPosition(src.resumeAnchor, src.resumePosition);
       highlightBlock(ttsList[idx]?.blockIdx);
       updatePos();
     }
@@ -93,9 +104,22 @@ function loadFile(src) {
 
 function saveReadPosition() {
   if (currentRecentId !== null) {
-    return recentFileUpdateReadMeta(currentRecentId, idx, ttsList.length);
+    const item = ttsList[idx];
+    const anchor = item ? { blockIdx:item.blockIdx, text:item.text, occurrence:ttsList.slice(0, idx).filter(other => other.blockIdx === item.blockIdx && other.text === item.text).length } : null;
+    return recentFileUpdateReadMeta(currentRecentId, idx, ttsList.length, anchor);
   }
   return Promise.resolve();
+}
+
+function resolveReadPosition(anchor, fallback = 0, list = ttsList) {
+  if (anchor) {
+    const matches = list.map((item, index) => item.blockIdx === anchor.blockIdx && item.text === anchor.text ? index : -1).filter(index => index >= 0);
+    if (matches.length) return matches[anchor.occurrence || 0] ?? matches[0];
+    // A newly skipped classification header resumes at the next readable block.
+    const next = list.findIndex(item => item.blockIdx >= anchor.blockIdx);
+    if (next >= 0) return next;
+  }
+  return Math.max(0, Math.min(list.length - 1, Number(fallback) || 0));
 }
 
 async function loadReviewStatus() {
@@ -121,6 +145,9 @@ function updateNotesStatusPill(status) {
   const normalized = normalizeReviewStatus(status);
   pill.textContent = statusLabel(normalized);
   pill.className = `status-pill status-${normalized}`;
+  const headerPill = document.getElementById('reader-status-pill');
+  headerPill.textContent = pill.textContent;
+  headerPill.className = pill.className;
 }
 
 async function appInit() {
@@ -186,6 +213,7 @@ async function refreshHighlightIndicators() {
 }
 
 function showNoteModal() {
+  noteReturnFocus = document.activeElement;
   const modal = document.getElementById('note-modal');
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
@@ -197,6 +225,7 @@ function hideNoteModal() {
   modal.classList.remove('open');
   modal.setAttribute('aria-hidden', 'true');
   activeNoteBlockIdx = null;
+  if (noteReturnFocus?.isConnected) noteReturnFocus.focus();
 }
 
 async function openNoteEditor(blockIdx) {
@@ -243,10 +272,12 @@ async function deleteActiveNote() {
 }
 
 function showNotesPanel() {
+  notesReturnFocus = document.activeElement;
   const panel = document.getElementById('notes-panel');
   panel.classList.add('open');
   panel.setAttribute('aria-hidden', 'false');
   renderNotesPanel();
+  document.getElementById('notes-close-btn').focus();
 }
 
 function hideNotesPanel() {
@@ -254,6 +285,7 @@ function hideNotesPanel() {
   if (!panel) return;
   panel.classList.remove('open');
   panel.setAttribute('aria-hidden', 'true');
+  if (panel.contains(document.activeElement) && notesReturnFocus?.isConnected) notesReturnFocus.focus();
 }
 
 async function renderNotesPanel(existingNotes) {
@@ -333,6 +365,8 @@ function updateReviewSummary(notes = [], highlights = []) {
   const summary = document.getElementById('review-summary');
   if (!summary) return;
   const unresolved = notes.length;
+  document.getElementById('reader-review-counts').textContent = `${notes.length} notes · ${highlights.length} highlights`;
+  document.getElementById('panel-review-counts').textContent = `${notes.length} notes · ${highlights.length} highlights · ${unresolved} open`;
   summary.innerHTML = `
     <span>${notes.length} notes</span>
     <span>${highlights.length} highlights</span>
@@ -492,7 +526,7 @@ function groupReviewItems(notes, highlights) {
 }
 
 function filteredReviewItems(notes, highlights, filter) {
-  if (filter === 'notes') return { notes, highlights: [] };
+  if (filter === 'notes' || filter === 'tasks') return { notes, highlights: [] };
   if (filter === 'highlights') return { notes: [], highlights };
   if (filter && filter.startsWith('highlight:')) {
     const kind = normalizeHighlightKind(filter.split(':')[1]);
@@ -674,7 +708,9 @@ document.getElementById('reader-back-btn').addEventListener('click', () => {
   renderLibraryScreen();
 });
 
-document.getElementById('reader-tools-btn').addEventListener('click', showVoiceControls);
+document.getElementById('reader-tools-btn').addEventListener('click', () => {
+  if (document.body.classList.contains('controls-open')) hideVoiceControls(); else showVoiceControls();
+});
 document.getElementById('voice-controls-close-btn').addEventListener('click', hideVoiceControls);
 document.getElementById('voice-controls-panel').addEventListener('click', e => {
   if (e.target.id === 'voice-controls-panel') hideVoiceControls();
@@ -841,7 +877,7 @@ document.getElementById('doc-render').addEventListener('pointerdown', e => {
   longPressTimer = setTimeout(() => {
     suppressNextClick = true;
     openNoteEditor(parseInt(el.dataset.bid));
-  }, 650);
+  }, Number(localStorage.getItem('axiom-reader-hold')) || 650);
 });
 
 document.getElementById('doc-render').addEventListener('pointermove', e => {

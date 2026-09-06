@@ -248,10 +248,32 @@ const ADVANCED_GEMINI_VOICES = [
   { id: 'gemini-Leda', name: 'Leda (Gemini)', desc: 'Gentle, soothing' }
 ];
 
+const ADVANCED_NEURAL2_VOICES = [
+  { id: 'en-US-Neural2-D', name: 'Neural2 D (US) — Male', desc: 'Clear, steady American male' },
+  { id: 'en-US-Neural2-F', name: 'Neural2 F (US) — Female', desc: 'Clear, natural American female' },
+  { id: 'en-US-Neural2-F', style: 'lively', name: 'Neural2 F (US) — Female · Lively (Preview)', desc: 'Brighter, more energetic delivery' },
+  { id: 'en-US-Neural2-J', name: 'Neural2 J (US) — Male', desc: 'Natural American male' },
+  { id: 'en-US-Neural2-J', style: 'lively', name: 'Neural2 J (US) — Male · Lively (Preview)', desc: 'Brighter, more energetic delivery' },
+  { id: 'en-GB-Neural2-B', name: 'Neural2 B (UK) — Male', desc: 'Clear, steady British male' },
+  { id: 'en-GB-Neural2-F', name: 'Neural2 F (UK) — Female', desc: 'Clear, natural British female' }
+];
+
+const NEURAL2_STYLE_SEPARATOR = '::style=';
+
+function advancedVoiceValue(voice) {
+  return voice.style ? `${voice.id}${NEURAL2_STYLE_SEPARATOR}${voice.style}` : voice.id;
+}
+
+function parseAdvancedVoiceSelection(value) {
+  const [voiceId, style = ''] = String(value || '').split(NEURAL2_STYLE_SEPARATOR, 2);
+  return { voiceId, style: style === 'lively' ? 'lively' : '' };
+}
+
 // Engine definitions for the settings panel cards
 const TTS_ENGINES = [
   { id: 'legacy', name: 'Legacy Speech synthesis', desc: 'Local processor offline speech module synth block', mode: 'offline' },
   { id: 'chirp', name: 'Chirp 3 HD Web-API', desc: 'Google Cloud high fidelity hyper-resonant neural stream', mode: 'proxy' },
+  { id: 'neural2', name: 'Google Neural2 with live following', desc: 'Natural Google voice with sentence-timed highlighting and scrolling', mode: 'proxy' },
   { id: 'gemini', name: 'Gemini 3.1 Flash TTS (Preview)', desc: 'Higher-cost voice generation for intentional sections and exports', mode: 'proxy' }
 ];
 
@@ -271,12 +293,15 @@ let isAudioContextSpeaking = false;
 let audioAnalyser = null;
 let visualizerAnimationId = null;
 let visualizerSpike = 0;
+let advancedFollowTimerId = null;
+let advancedFollowSource = null;
 
 // Cloud generation is deliberately conservative. Chirp gets enough capacity to
 // stay ahead of playback once text is chunked; Gemini remains limited because it
 // is intended for intentional, higher-cost generation rather than live reading.
 const API_REQUESTS_PER_MINUTE = {
   CHIRP3_HD: 3,
+  NEURAL2: 3,
   GEMINI: 1,
 };
 const apiRequestTimestamps = new Map();
@@ -324,9 +349,9 @@ async function acquireRequestSlot(engine, signal) {
 // A chunk is large enough to cover roughly 20–45 seconds of narration. This
 // lets the reader prepare audio while the current chunk is playing instead of
 // making the listener wait after every sentence.
-const ADVANCED_CHUNK_TARGET_CHARS = 600;
-const ADVANCED_CHUNK_MAX_CHARS = 850;
-const ADVANCED_PREFETCH_BY_ENGINE = { CHIRP3_HD: 2, GEMINI: 1 };
+const ADVANCED_CHUNK_TARGET_CHARS = 450;
+const ADVANCED_CHUNK_MAX_CHARS = 550;
+const ADVANCED_PREFETCH_BY_ENGINE = { CHIRP3_HD: 2, NEURAL2: 2, GEMINI: 1 };
 const advancedAudioRequests = new Map();
 const advancedRequestControllers = new Set();
 
@@ -392,6 +417,7 @@ function getSelectedVoiceEngine() {
   if (!sel) return 'LEGACY';
   const val = sel.value;
   if (val.startsWith('gemini-')) return 'GEMINI';
+  if (/^en-(US|GB)-Neural2-/.test(val)) return 'NEURAL2';
   if (val.startsWith('en-US-Chirp3-HD-') || val.startsWith('en-GB-Chirp3-HD-')) return 'CHIRP3_HD';
   return 'LEGACY';
 }
@@ -443,7 +469,18 @@ function loadVoices() {
   const mode = localStorage.getItem('axiom-tts-mode') || 'offline';
   
   if (mode === 'proxy') {
-    // 2. Gemini 3.1 Flash TTS (stream-capable provider model)
+    // 2. Google Neural2 voices with sentence timing marks
+    const neural2Group = document.createElement('optgroup');
+    neural2Group.label = 'Google Neural2 (Timed Highlighting)';
+    ADVANCED_NEURAL2_VOICES.forEach(nv => {
+      const option = document.createElement('option');
+      option.value = advancedVoiceValue(nv);
+      option.textContent = nv.name;
+      neural2Group.appendChild(option);
+    });
+    sel.appendChild(neural2Group);
+
+    // 3. Gemini 3.1 Flash TTS (stream-capable provider model)
     const geminiGroup = document.createElement('optgroup');
     geminiGroup.label = 'Gemini 3.1 Flash TTS (AI Synthesis)';
     ADVANCED_GEMINI_VOICES.forEach(gv => {
@@ -454,7 +491,7 @@ function loadVoices() {
     });
     sel.appendChild(geminiGroup);
 
-    // 3. Chirp 3 HD Voices (Google Cloud High-Def)
+    // 4. Chirp 3 HD Voices (Google Cloud High-Def)
     const chirpGroup = document.createElement('optgroup');
     chirpGroup.label = 'Chirp 3 HD Voices (Google Cloud)';
     ADVANCED_CHIRP_VOICES.forEach(cv => {
@@ -466,7 +503,7 @@ function loadVoices() {
     sel.appendChild(chirpGroup);
   }
 
-  // 4. Local Device Voices (Legacy fallback)
+  // 5. Local Device Voices (Legacy fallback)
   if (voices.length > 0) {
     const nativeGroup = document.createElement('optgroup');
     nativeGroup.label = 'Local Device Voices (Legacy)';
@@ -544,6 +581,7 @@ function speakOne(sentenceIdx, token, attempt = 0, forceSystemVoice = false) {
 function createAdvancedChunk(startIdx, list = ttsList) {
   const start = Math.max(0, Math.min(list.length - 1, startIdx));
   const items = [];
+  const segmentIndexes = [];
   let characterCount = 0;
   let endIdx = start;
 
@@ -556,6 +594,7 @@ function createAdvancedChunk(startIdx, list = ttsList) {
     if (items.length && nextLength > ADVANCED_CHUNK_MAX_CHARS) break;
 
     items.push(text);
+    segmentIndexes.push(currentIdx);
     characterCount = nextLength;
     endIdx = currentIdx;
 
@@ -567,6 +606,8 @@ function createAdvancedChunk(startIdx, list = ttsList) {
     endIdx,
     blockIdx: list[start]?.blockIdx,
     speechText: items.join(' '),
+    segments: items,
+    segmentIndexes,
   };
 }
 
@@ -581,11 +622,23 @@ function createAdvancedChunks(list = ttsList) {
   return chunks;
 }
 
-function getAdvancedCacheKey({ engine, voiceId, speed, text }) {
+function getAdvancedCacheKey({ engine, voiceId, voiceStyle = '', speed, text, segments = [] }) {
   // Gemini playback speed is applied in the browser, so it must not create a
   // second paid generation of identical audio.
-  const synthesisSpeed = engine === 'CHIRP3_HD' ? speed : 'native';
-  return `tts:v2:${engine}:${voiceId}:${synthesisSpeed}:${text}`;
+  const synthesisSpeed = engine === 'GEMINI' ? 'native' : speed;
+  // Neural2 timing marks depend on sentence boundaries, even when the joined
+  // spoken text happens to be identical.
+  const timingShape = engine === 'NEURAL2' ? segments.join('\u241e') : text;
+  return `tts:v4:${engine}:${voiceId}:${voiceStyle || 'default'}:${synthesisSpeed}:${timingShape}`;
+}
+
+function normalizeAdvancedAudioRecord(value) {
+  if (typeof value === 'string' && value) return { data: value, timings: [] };
+  if (!value || typeof value.data !== 'string' || !value.data) return null;
+  return {
+    data: value.data,
+    timings: Array.isArray(value.timings) ? value.timings : [],
+  };
 }
 
 function cancelAdvancedAudioRequests() {
@@ -596,14 +649,18 @@ function cancelAdvancedAudioRequests() {
 
 async function requestAdvancedAudio(chunk) {
   const voiceSel = document.getElementById('voice-sel');
-  const voiceId = voiceSel ? voiceSel.value : 'en-US-Chirp3-HD-Charon';
+  const selectedVoice = parseAdvancedVoiceSelection(voiceSel ? voiceSel.value : 'en-US-Chirp3-HD-Charon');
+  const voiceId = selectedVoice.voiceId;
+  const voiceStyle = selectedVoice.style;
   const speed = parseFloat(document.getElementById('rate-slider').value) || 1.0;
   const engine = getSelectedVoiceEngine();
   const text = chunk.speechText.trim();
-  const cacheKey = getAdvancedCacheKey({ engine, voiceId, speed, text });
+  const segments = Array.isArray(chunk.segments) ? chunk.segments : [text];
+  const cacheKey = getAdvancedCacheKey({ engine, voiceId, voiceStyle, speed, text, segments });
 
   const cachedAudio = await getCachedAudio(cacheKey);
-  if (cachedAudio) return cachedAudio;
+  const cachedRecord = normalizeAdvancedAudioRecord(cachedAudio);
+  if (cachedRecord) return cachedRecord;
 
   const existingRequest = advancedAudioRequests.get(cacheKey);
   if (existingRequest) return existingRequest;
@@ -627,7 +684,14 @@ async function requestAdvancedAudio(chunk) {
       method: 'POST',
       headers,
       signal: controller.signal,
-      body: JSON.stringify({ text, voice: voiceId, speed, engine })
+      body: JSON.stringify({
+        text,
+        voice: voiceId,
+        style: voiceStyle,
+        speed,
+        engine,
+        ...(engine === 'NEURAL2' ? { segments } : {})
+      })
     });
 
     if (!response.ok) {
@@ -638,11 +702,11 @@ async function requestAdvancedAudio(chunk) {
     }
 
     const responseJson = await response.json();
-    const audioData = responseJson.data;
-    if (!audioData) throw new Error('No audio data returned by the voice service.');
+    const audioRecord = normalizeAdvancedAudioRecord(responseJson);
+    if (!audioRecord) throw new Error('No audio data returned by the voice service.');
 
-    await setCachedAudio(cacheKey, audioData);
-    return audioData;
+    await setCachedAudio(cacheKey, audioRecord);
+    return audioRecord;
   })();
 
   advancedAudioRequests.set(cacheKey, request);
@@ -671,6 +735,63 @@ async function prefetchAdvancedAudio(startIdx, token, engine) {
   }
 }
 
+function cancelAdvancedTimedFollowing(source = null) {
+  if (source && advancedFollowSource !== source) return;
+  if (advancedFollowTimerId !== null) {
+    clearTimeout(advancedFollowTimerId);
+    advancedFollowTimerId = null;
+  }
+  advancedFollowSource = null;
+}
+
+function getValidAdvancedTimeline(timings, chunk, audioDuration) {
+  if (!Array.isArray(timings) || !Array.isArray(chunk.segmentIndexes)) return [];
+  const timeline = [];
+  let lastTime = -1;
+  timings.forEach(timing => {
+    const segmentIndex = Number(timing?.segmentIndex);
+    const timeSeconds = Number(timing?.timeSeconds);
+    const sentenceIdx = chunk.segmentIndexes[segmentIndex];
+    if (!Number.isInteger(segmentIndex) || sentenceIdx === undefined) return;
+    if (!Number.isFinite(timeSeconds) || timeSeconds < 0 || timeSeconds < lastTime) return;
+    if (Number.isFinite(audioDuration) && timeSeconds > audioDuration + 0.25) return;
+    timeline.push({ sentenceIdx, timeSeconds });
+    lastTime = timeSeconds;
+  });
+  return timeline;
+}
+
+function startAdvancedTimedFollowing(sourceNode, chunk, timings, token, audioDuration) {
+  cancelAdvancedTimedFollowing();
+  const timeline = getValidAdvancedTimeline(timings, chunk, audioDuration);
+  if (timeline.length < 1 || !audioCtx) return false;
+
+  advancedFollowSource = sourceNode;
+  const startedAt = audioCtx.currentTime;
+  let nextTiming = 0;
+
+  const followFrame = () => {
+    if (!playing || token !== queueToken || currentAudioSource !== sourceNode || advancedFollowSource !== sourceNode) {
+      cancelAdvancedTimedFollowing(sourceNode);
+      return;
+    }
+    const elapsedAudioSeconds = Math.max(0, audioCtx.currentTime - startedAt) * sourceNode.playbackRate.value;
+    while (nextTiming < timeline.length && timeline[nextTiming].timeSeconds <= elapsedAudioSeconds + 0.03) {
+      const sentenceIdx = timeline[nextTiming].sentenceIdx;
+      idx = sentenceIdx;
+      highlightSpeechSentence(sentenceIdx);
+      updatePos();
+      nextTiming += 1;
+    }
+    // Track the audio clock directly. A short timer keeps following reliable
+    // when a browser pauses visual animation frames in an embedded reader.
+    advancedFollowTimerId = setTimeout(followFrame, 50);
+  };
+
+  followFrame();
+  return true;
+}
+
 
 // --- SECTION 6: ADVANCED WEB AUDIO SYNTHESIS & DECODING ---
 async function speakAdvanced(chunk, token) {
@@ -680,10 +801,11 @@ async function speakAdvanced(chunk, token) {
 
   const item = ttsList[chunk.startIdx];
   if (!item || !chunk.speechText) return;
+  const speed = parseFloat(document.getElementById('rate-slider').value) || 1;
 
   // Highlight active visual segment inside the doc viewer
   idx = chunk.startIdx;
-  highlightBlock(item.blockIdx);
+  highlightSpeechSentence(chunk.startIdx);
   updatePos();
   updateMediaSession('playing');
   const engine = getSelectedVoiceEngine();
@@ -693,11 +815,13 @@ async function speakAdvanced(chunk, token) {
   showLoadingBar();
   updateLoadingBar(20);
 
-  let base64Audio;
+  let audioRecord;
   try {
-    base64Audio = await requestAdvancedAudio(chunk);
+    audioRecord = normalizeAdvancedAudioRecord(await requestAdvancedAudio(chunk));
+    if (!audioRecord) throw new Error('No playable audio returned by the voice service.');
   } catch (err) {
     if (err?.name === 'AbortError') return;
+    if (!playing || token !== queueToken) return;
     console.error('Advanced fetch failed:', err);
     const notice = document.createElement('div');
     notice.className = 'tts-error-toast';
@@ -712,8 +836,10 @@ async function speakAdvanced(chunk, token) {
     }
     return;
   } finally {
-    if (playBtn) playBtn.classList.remove('generating-audio');
-    hideLoadingBar();
+    if (token === queueToken) {
+      if (playBtn) playBtn.classList.remove('generating-audio');
+      hideLoadingBar();
+    }
   }
 
   if (!playing || token !== queueToken) return;
@@ -721,7 +847,7 @@ async function speakAdvanced(chunk, token) {
   try {
     updateLoadingBar(90); // Phase: Decoding audio data
     // Decode base64 to 16-bit PCM bytes
-    const rawBinary = atob(base64Audio);
+    const rawBinary = atob(audioRecord.data);
     const byteLength = rawBinary.length;
     const arrayBytes = new Uint8Array(byteLength);
     for (let i = 0; i < byteLength; i++) {
@@ -742,9 +868,9 @@ async function speakAdvanced(chunk, token) {
     sourceNode.buffer = buffer;
 
     // Apply speed adjustment.
-    // Note: Google Cloud (Chirp) applies speed synthesis server-side.
-    // Gemini does not support custom speaking rates natively, so we apply speed scale in browser context.
-    sourceNode.playbackRate.value = engine === 'CHIRP3_HD' ? 1.0 : speed;
+    // Google Cloud voices apply speed during generation. Gemini applies it in
+    // the browser because that service does not accept a speaking rate.
+    sourceNode.playbackRate.value = engine === 'GEMINI' ? speed : 1.0;
 
     const gainNode = audioCtx.createGain();
     gainNode.gain.value = 2.0;
@@ -771,6 +897,7 @@ async function speakAdvanced(chunk, token) {
     isAudioContextSpeaking = true;
 
     sourceNode.onended = () => {
+      cancelAdvancedTimedFollowing(sourceNode);
       if (currentAudioSource === sourceNode) {
         currentAudioSource = null;
         isAudioContextSpeaking = false;
@@ -791,6 +918,7 @@ async function speakAdvanced(chunk, token) {
 
     hideLoadingBar(); // Audio playing — hide progress bar
     sourceNode.start(0);
+    startAdvancedTimedFollowing(sourceNode, chunk, audioRecord.timings, token, buffer.duration);
     void prefetchAdvancedAudio(chunk.endIdx + 1, token, engine);
 
   } catch (err) {
@@ -825,7 +953,7 @@ function buildUtterance(item, sentenceIdx, token, attempt = 0, forceSystemVoice 
     if (!playing || token !== queueToken) return;
     started = true;
     idx = sentenceIdx;
-    highlightBlock(item.blockIdx);
+    highlightSpeechSentence(sentenceIdx);
     updatePos();
     updateMediaSession('playing');
   };
@@ -872,6 +1000,7 @@ function queueSpeechFrom(startIdx) {
   queueToken += 1;
   const token = queueToken;
   clearSpeechTimer();
+  cancelAdvancedTimedFollowing();
   
   // Stop existing sound sources
   if (currentAudioSource) {
@@ -982,6 +1111,7 @@ function stopTTS() {
   playing = false;
   queueToken += 1;
   cancelAdvancedAudioRequests();
+  cancelAdvancedTimedFollowing();
   clearSpeechTimer();
   currentUtterance = null;
   setBtn('play');
@@ -1022,6 +1152,8 @@ function setBtn(s) {
   // Update main play button
   const btn = document.getElementById('play-btn');
   if (btn) {
+    btn.setAttribute('aria-label', s === 'play' ? 'Play' : 'Pause');
+    btn.title = s === 'play' ? 'Play' : 'Pause';
     const btnIcon = btn.querySelector('.material-symbols-outlined');
     if (btnIcon) btnIcon.textContent = icon;
     else btn.textContent = s === 'play' ? '▶' : '⏸';
@@ -1029,6 +1161,8 @@ function setBtn(s) {
   // Sync mini-player play button
   const miniBtn = document.getElementById('mini-play-btn');
   if (miniBtn) {
+    miniBtn.setAttribute('aria-label', s === 'play' ? 'Play' : 'Pause');
+    miniBtn.title = s === 'play' ? 'Play' : 'Pause';
     const miniIcon = miniBtn.querySelector('.material-symbols-outlined');
     if (miniIcon) miniIcon.textContent = icon;
   }
@@ -1073,19 +1207,14 @@ function isBlockVisible(el, container) {
   return (elRect.top >= conRect.top + 10 && elRect.bottom <= conRect.bottom - 10);
 }
 
-function highlightBlock(blockIdx) {
-  document.querySelectorAll('.reading-block').forEach(el => el.classList.remove('reading-block'));
+function highlightBlock(blockIdx, scroll = true) {
+  document.querySelectorAll('.reading-block').forEach(el => { el.classList.remove('reading-block'); el.removeAttribute('aria-current'); });
+  if (window.CSS?.highlights) CSS.highlights.delete('spoken-passage');
   const el = document.querySelector(`[data-bid="${blockIdx}"]`);
   if (el) {
     el.classList.add('reading-block');
-    const container = document.getElementById('doc-view');
-    if (container) {
-      if (!isBlockVisible(el, container)) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    } else {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    el.setAttribute('aria-current', 'true');
+    if (scroll) scrollReadingTarget(el, !playing);
   }
 }
 
@@ -1113,11 +1242,13 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
     }
 
     const voiceSel = document.getElementById('voice-sel');
-    const voiceId = voiceSel ? voiceSel.value : 'en-US-Chirp3-HD-Charon';
+    const selectedVoice = parseAdvancedVoiceSelection(voiceSel ? voiceSel.value : 'en-US-Chirp3-HD-Charon');
+    const voiceId = selectedVoice.voiceId;
+    const voiceStyle = selectedVoice.style;
     const speed = parseFloat(document.getElementById('rate-slider').value) || 1.0;
     const engine = getSelectedVoiceEngine();
     if (engine === 'LEGACY') {
-      throw new Error('Choose a Chirp or Gemini voice before compiling cloud audio.');
+      throw new Error('Choose a Neural2, Chirp, or Gemini voice before compiling cloud audio.');
     }
     const batchSegments = createAdvancedChunks(list);
 
@@ -1158,12 +1289,14 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
 
       if (!cleanText.trim()) continue;
 
-      const cacheKey = getAdvancedCacheKey({ engine, voiceId, speed, text: cleanText });
+      const segments = Array.isArray(segment.segments) ? segment.segments : [cleanText];
+      const cacheKey = getAdvancedCacheKey({ engine, voiceId, voiceStyle, speed, text: cleanText, segments });
       let base64Audio = "";
 
       // 1. Try to load from database cache
       try {
-        base64Audio = await getCachedAudio(cacheKey);
+        const cachedRecord = normalizeAdvancedAudioRecord(await getCachedAudio(cacheKey));
+        base64Audio = cachedRecord?.data || '';
       } catch (err) {
         console.error("IndexedDB fetch failed in downloader:", err);
       }
@@ -1190,17 +1323,20 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
             body: JSON.stringify({
               text: cleanText,
               voice: voiceId,
+              style: voiceStyle,
               speed: speed,
-              engine: engine
+              engine: engine,
+              ...(engine === 'NEURAL2' ? { segments } : {})
             })
           });
 
           if (response.ok) {
             const json = await response.json();
-            if (json && json.data) {
-              base64Audio = json.data;
+            const audioRecord = normalizeAdvancedAudioRecord(json);
+            if (audioRecord) {
+              base64Audio = audioRecord.data;
               try {
-                await setCachedAudio(cacheKey, base64Audio);
+                await setCachedAudio(cacheKey, audioRecord);
               } catch (e) {
                 console.error("IndexedDB save failed in downloader:", e);
               }
@@ -1307,6 +1443,56 @@ async function downloadAudioBatch(list, title = "Axiom_Audio_Book") {
 // Plays a short test sentence using the currently selected voice engine.
 // Gemini previews are blocked because this reader reserves Gemini requests for
 // intentional narration rather than short disposable tests.
+async function playAdvancedVoicePreview() {
+  if (playing) stopTTS();
+  ensureAudioCtx();
+  const engine = getSelectedVoiceEngine();
+  const chunk = {
+    startIdx: 0,
+    endIdx: 0,
+    speechText: TTS_TEST_TEXT,
+    segments: [TTS_TEST_TEXT],
+    segmentIndexes: [0],
+  };
+
+  showLoadingBar();
+  updateLoadingBar(20);
+  try {
+    const record = normalizeAdvancedAudioRecord(await requestAdvancedAudio(chunk));
+    if (!record) throw new Error('No playable audio returned by the voice service.');
+    const rawBinary = atob(record.data);
+    const bytes = new Uint8Array(rawBinary.length);
+    for (let i = 0; i < rawBinary.length; i += 1) bytes[i] = rawBinary.charCodeAt(i);
+    const pcm16 = new Int16Array(bytes.buffer);
+    const float32 = new Float32Array(pcm16.length);
+    for (let i = 0; i < pcm16.length; i += 1) float32[i] = pcm16[i] / 32768;
+    const buffer = audioCtx.createBuffer(1, float32.length, 24000);
+    buffer.copyToChannel(float32, 0);
+    const sourceNode = audioCtx.createBufferSource();
+    sourceNode.buffer = buffer;
+    const speed = parseFloat(document.getElementById('rate-slider').value) || 1;
+    sourceNode.playbackRate.value = engine === 'GEMINI' ? speed : 1;
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.value = 2;
+    sourceNode.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    if (currentAudioSource) {
+      try { currentAudioSource.stop(); } catch (_) {}
+    }
+    currentAudioSource = sourceNode;
+    isAudioContextSpeaking = true;
+    sourceNode.onended = () => {
+      if (currentAudioSource === sourceNode) currentAudioSource = null;
+      isAudioContextSpeaking = false;
+    };
+    sourceNode.start(0);
+  } catch (err) {
+    if (err?.name !== 'AbortError') alert(`Voice preview failed: ${err.message || err}`);
+  } finally {
+    hideLoadingBar();
+  }
+}
+
 function previewTTSVoice() {
   console.log('[AXIOM Preview] previewTTSVoice called');
   const engine = getSelectedVoiceEngine();
@@ -1337,12 +1523,10 @@ function previewTTSVoice() {
     }
     console.log('[AXIOM Preview] Speaking with legacy voice:', selectedVoice?.name || 'default');
     synth.speak(utt);
-  } else if (engine === 'CHIRP3_HD') {
-    // Chirp preview is allowed — synthesize a short clip through the proxy
-    console.log('[AXIOM Preview] Requesting Chirp preview from proxy');
-    const tempItem = { text: TTS_TEST_TEXT, speechText: TTS_TEST_TEXT, blockIdx: 0 };
-    const token = ++queueToken;
-    speakAdvanced(tempItem, 0, token);
+  } else {
+    // Google cloud previews synthesize one short sentence through the existing proxy.
+    console.log(`[AXIOM Preview] Requesting ${engine} preview from proxy`);
+    void playAdvancedVoicePreview();
   }
 }
 
@@ -1412,6 +1596,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (pendingEngine === 'chirp') {
       voiceList = ADVANCED_CHIRP_VOICES;
+    } else if (pendingEngine === 'neural2') {
+      voiceList = ADVANCED_NEURAL2_VOICES;
     } else if (pendingEngine === 'gemini') {
       voiceList = ADVANCED_GEMINI_VOICES;
     } else {
@@ -1433,25 +1619,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // For Chirp and Gemini engines
+    // For Google cloud and Gemini engines
     voiceList.forEach(v => {
+      const profileValue = advancedVoiceValue(v);
       const card = document.createElement('div');
-      card.className = 'tts-voice-card' + (pendingVoice === v.id ? ' active' : '');
+      card.className = 'tts-voice-card' + (pendingVoice === profileValue ? ' active' : '');
       card.innerHTML = `<div class="voice-name">${v.name}</div><div class="voice-desc">${v.desc}</div>`;
-      card.addEventListener('click', () => { pendingVoice = v.id; renderVoiceCards(); });
+      card.addEventListener('click', () => { pendingVoice = profileValue; renderVoiceCards(); });
       voiceCardsContainer.appendChild(card);
     });
 
     // Select first voice by default if none selected for this engine
-    if (voiceList.length > 0 && !voiceList.some(v => v.id === pendingVoice)) {
-      pendingVoice = voiceList[0].id;
+    if (voiceList.length > 0 && !voiceList.some(v => advancedVoiceValue(v) === pendingVoice)) {
+      pendingVoice = advancedVoiceValue(voiceList[0]);
       renderVoiceCards();
     }
   }
 
   // --- SHOW/HIDE CONNECTION CONTROLS (Column 3) ---
   function updateConnectionVisibility() {
-    const needsProxy = (pendingEngine === 'chirp' || pendingEngine === 'gemini');
+    const needsProxy = (pendingEngine === 'chirp' || pendingEngine === 'neural2' || pendingEngine === 'gemini');
     proxySection.style.display = needsProxy ? 'block' : 'none';
     githubSection.style.display = needsProxy ? 'block' : 'none';
 
@@ -1463,6 +1650,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (pendingEngine === 'chirp') {
       quotaSection.style.display = 'block';
       quotaInfo.innerHTML = 'Reader cap: 3 new chunks per minute<br>Upcoming chunks are prepared and cached locally to keep playback continuous.';
+    } else if (pendingEngine === 'neural2') {
+      quotaSection.style.display = 'block';
+      quotaInfo.innerHTML = '<span class="tts-quota-badge">TIMED FOLLOWING</span><br>Reader cap: 3 new chunks per minute<br>Google sentence marks keep the highlight and scroll position aligned with the recording.';
     } else {
       quotaSection.style.display = 'none';
     }
@@ -1486,6 +1676,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function resolveEngineFromVoice(voiceId) {
     if (!voiceId || voiceId === SYSTEM_VOICE_VALUE) return 'legacy';
     if (voiceId.startsWith('gemini-')) return 'gemini';
+    if (/^en-(US|GB)-Neural2-/.test(voiceId)) return 'neural2';
     if (voiceId.startsWith('en-US-Chirp3-HD-') || voiceId.startsWith('en-GB-Chirp3-HD-')) return 'chirp';
     return 'legacy';
   }

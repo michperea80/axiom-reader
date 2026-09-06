@@ -366,6 +366,10 @@ function prepareSpeechSegments(markdownText) {
 }
 
 function buildDoc(blocks, h1Idx, infocardStart, infocardEnd, endMatterIdx) {
+  if (localStorage.getItem('axiom-reader-skip-header') === 'off') {
+    infocardStart = -1;
+    infocardEnd = -1;
+  }
   ttsList = [];
   let html = '';
   let infocardLines = [];

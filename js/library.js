@@ -112,7 +112,7 @@ async function recentFileSave(name, content, folderId = null) {
     sourceType: /\.pdf$/i.test(name) ? 'pdf' : 'text',
   };
   const id = await idbPut('recentFiles', record);
-  return { id, readPosition: record.readPosition };
+  return { id, readPosition: record.readPosition, readAnchor:record.readAnchor };
 }
 
 async function recentFileGet(id) {
@@ -125,11 +125,12 @@ async function recentFileUpdatePosition(id, position) {
   if (rec) { rec.readPosition = position; return idbPut('recentFiles', rec); }
 }
 
-async function recentFileUpdateReadMeta(id, position, total) {
+async function recentFileUpdateReadMeta(id, position, total, anchor = null) {
   const rec = await recentFileGet(id);
   if (!rec) return;
   rec.readPosition = position;
   rec.readTotal = total;
+  rec.readAnchor = anchor;
   return idbPut('recentFiles', rec);
 }
 
@@ -289,6 +290,7 @@ function timeAgo(ts) {
 
 async function renderLibraryScreen() {
   const recents   = await recentFileList();
+  document.getElementById('recents-count').textContent = `${recents.length} ${recents.length === 1 ? 'FILE' : 'FILES'}`;
   const recentsEl = document.getElementById('lib-recents-list');
   if (recents.length === 0) {
     recentsEl.innerHTML = '<p class="lib-empty">No files opened yet.</p>';
@@ -299,7 +301,7 @@ async function renderLibraryScreen() {
       const displayIndex = String(index + 1).padStart(2, '0');
       return `
       <div class="recent-row">
-        <div class="recent-row-left recent-info" data-recent-id="${f.id}">
+        <div class="recent-row-left recent-info" role="button" tabindex="0" aria-label="Open ${escHtml(f.name)}" data-recent-id="${f.id}">
           <span class="recent-num">${displayIndex}</span>
           <div class="recent-info-block">
             <p class="recent-name">${escHtml(f.name)}</p>
@@ -313,10 +315,10 @@ async function renderLibraryScreen() {
           </div>
         </div>
         <div class="recent-row-right">
-          <button class="recent-action-btn recent-play" data-recent-id="${f.id}" title="Open">
+          <button class="recent-action-btn recent-play" data-recent-id="${f.id}" title="Open" aria-label="Open ${escHtml(f.name)}">
             <span class="material-symbols-outlined" style="font-size: 18px">play_arrow</span>
           </button>
-          <button class="recent-action-btn btn-delete recent-delete" data-recent-id="${f.id}" title="Remove">
+          <button class="recent-action-btn btn-delete recent-delete" data-recent-id="${f.id}" title="Remove" aria-label="Remove ${escHtml(f.name)}">
             <span class="material-symbols-outlined" style="font-size: 18px">delete</span>
           </button>
         </div>
@@ -359,7 +361,7 @@ async function openBrowseFile(idx) {
   try {
     const content = await readSupportedFile(f);
     const saved   = await recentFileSave(f.name, content, null);
-    loadFile({ name: f.name, content, recentId: saved.id, resumePosition: saved.readPosition });
+    loadFile({ name: f.name, content, recentId: saved.id, resumePosition: saved.readPosition, resumeAnchor:saved.readAnchor });
   } catch (err) {
     showFileOpenError(err);
   }
@@ -372,7 +374,7 @@ async function openRecentFile(id) {
   rec.reviewStatus = normalizeReviewStatus(rec.reviewStatus);
   rec.reviewStatusUpdatedAt = rec.reviewStatusUpdatedAt || Date.now();
   await idbPut('recentFiles', rec);
-  loadFile({ name: rec.name, content: rec.content, recentId: rec.id, resumePosition: rec.readPosition });
+  loadFile({ name: rec.name, content: rec.content, recentId: rec.id, resumePosition: rec.readPosition, resumeAnchor:rec.readAnchor });
 }
 
 function escHtml(s) {

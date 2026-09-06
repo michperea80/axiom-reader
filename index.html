@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="./font/diaspora-title.css" />
   <link rel="stylesheet" href="./css/style.css" />
   <link rel="stylesheet" href="./css/library.css" />
+  <link rel="stylesheet" href="./css/reader-ui.css" />
   <title>AXIOM // Reader</title>
 
   <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
@@ -47,8 +48,8 @@
             <div class="status-bar-title" style="display:flex; align-items:center; gap:12px">
               <img class="brand-mark" src="./icons/AXIOM-Monos-Only.svg" alt="AXIOM" />
               <div>
-                <p>SYSTEM STATUS: CONNECTED</p>
-                <h1 class="diaspora-title-font">AXIOM_READER // <span style="color:var(--primary); font-style:italic">SC_32</span></h1>
+                <h1 class="diaspora-title-font">AXIOM_READER</h1>
+                <p>MARKDOWN TO SPEECH · REVIEW NOTES</p>
               </div>
             </div>
             <button class="library-settings-btn icon-btn material-symbols-outlined" id="library-settings-btn" title="Open library settings" aria-label="Open library settings">settings</button>
@@ -67,9 +68,10 @@
             </div>
             
             <!-- Recent archives -->
+            <p class="drop-hint">Or drop a Markdown, text, or PDF file here</p>
             <div class="lib-section" id="lib-recents-section">
               <div class="db-header">
-                <h3>RECENT_ARCHIVES.DB</h3>
+                <h3>RECENT FILES</h3>
                 <div class="db-divider"></div>
                 <span class="db-header-count" id="recents-count">RECORDS: 00</span>
               </div>
@@ -93,6 +95,13 @@
             </div>
           </div>
           <div id="settings-body">
+            <section class="settings-section" aria-labelledby="reading-settings-title">
+              <h2 id="reading-settings-title">Reading</h2>
+              <label class="reading-setting" for="skip-header-setting"><div>Skip classification header<span>Show Status, Scope, and Primary Material without reading them aloud. Applies when you next open a file.</span></div><select id="skip-header-setting"><option value="on">On</option><option value="off">Off</option></select></label>
+              <label class="reading-setting" for="text-size-setting"><div>Transcript text size<span>Applies to the reading view only.</span></div><select id="text-size-setting"><option value="compact">Compact</option><option value="default" selected>Default</option><option value="large">Large</option></select></label>
+              <label class="reading-setting" for="hold-setting"><div>Hold to annotate<span>How long to press a passage before opening a note.</span></div><select id="hold-setting"><option value="400">400 ms</option><option value="650" selected>650 ms</option><option value="900">900 ms</option></select></label>
+              <p class="settings-intro">Voice selection, cloud voices, connection settings, and audio download are available in the reader’s Voice &amp; Review panel.</p>
+            </section>
             <section class="settings-section" aria-labelledby="settings-data-title">
               <div class="db-header">
                 <h3 id="settings-data-title">DATA_AND_PRONUNCIATION</h3>
@@ -130,12 +139,16 @@
         <div id="screen-reader" class="screen">
           <div class="status-bar">
             <div class="status-bar-title">
-              <p>PARSER: ACTIVE // SYNTHESIS: READY</p>
               <h1 class="ui-chrome reader-title" style="display:flex; align-items:center; gap:8px; max-width: 100%">
                 <button class="topbar-back icon-btn material-symbols-outlined" id="reader-back-btn" title="Back to Library">arrow_back</button>
                 <span id="file-name" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap">No file loaded</span>
-                <button class="reader-tools-btn icon-btn material-symbols-outlined" id="reader-tools-btn" title="Open voice settings and reader tools" aria-label="Open voice settings and reader tools" aria-haspopup="dialog">settings_voice</button>
               </h1>
+              <div class="reader-heading-meta"><span id="reader-status-pill" class="status-pill status-unread">Unread</span><span id="reader-review-counts">0 notes · 0 highlights</span><span id="reader-word-count"></span></div>
+            </div>
+            <div class="reader-header-actions">
+              <button class="icon-btn material-symbols-outlined" id="reader-search-btn" aria-label="Search in file" title="Search in file">search</button>
+              <button class="icon-btn material-symbols-outlined" id="reader-notes-btn" aria-label="Review notes" title="Review notes">comment</button>
+              <button class="reader-tools-btn icon-btn material-symbols-outlined" id="reader-tools-btn" title="Voice and review" aria-label="Voice and review" aria-controls="voice-controls-panel" aria-expanded="false">graphic_eq</button>
             </div>
             <div class="status-bar-meta">
               <div>FORMAT: CANON_MARKDOWN</div>
@@ -172,13 +185,13 @@
         <div class="glow-card glow-active" style="min-height:100%">
           <div class="glow-card-header">
             <div class="pulse-dot"></div>
-            <h3>VOCAL_SYNTHESIS_CONTROL</h3>
+            <h3>VOICE &amp; REVIEW</h3>
             <button class="voice-controls-close icon-btn material-symbols-outlined" id="voice-controls-close-btn" title="Close voice settings" aria-label="Close voice settings">close</button>
           </div>
           
           <!-- Audio visualizer panel -->
           <div class="panel-section">
-            <span class="panel-section-label">SYNTHESIS_SPECTRUM_WAVEFORM</span>
+            <span class="panel-section-label">VOICE</span>
             <div class="visualizer-pane" id="visualizer">
               <div class="visualizer-bar"></div>
               <div class="visualizer-bar"></div>
@@ -197,7 +210,7 @@
           
           <!-- Search Panel (shown when search toggled) -->
           <div id="search-bar" class="panel-section ui-chrome" aria-hidden="true">
-            <span class="panel-section-label">DOCUMENT_SEARCH_ENGINE</span>
+            <label for="search-input" class="panel-section-label">SEARCH IN FILE</label>
             <div class="search-input-row">
               <input id="search-input" type="search" autocomplete="off" placeholder="Search current document" />
               <span id="search-count">0 / 0</span>
@@ -211,7 +224,7 @@
           
           <!-- Voice selector panel -->
           <div class="panel-section">
-            <span class="panel-section-label">ACTIVE_VOICE_MODULE</span>
+            <label for="voice-sel" class="panel-section-label">ACTIVE VOICE</label>
             <div class="voice-control-row">
               <select id="voice-sel" class="voice-select-dropdown ui-chrome">
                 <option value="">LOADING VOICE MODULES...</option>
@@ -227,7 +240,7 @@
             <!-- Playback Rate Slider -->
             <div class="slider-group">
               <div class="slider-header">
-                <span>PLAYBACK_SPEED</span>
+                <label for="rate-slider">SPEED</label>
                 <span id="rate-val" class="value">1.0×</span>
               </div>
               <div class="slider-track-container">
@@ -238,7 +251,7 @@
             <!-- Playback Pitch Slider (custom implemented) -->
             <div class="slider-group">
               <div class="slider-header">
-                <span>FREQUENCY_PITCH</span>
+                <label for="pitch-slider">PITCH</label>
                 <span id="pitch-val" class="value">1.0×</span>
               </div>
               <div class="slider-track-container">
@@ -248,8 +261,9 @@
           </div>
 
           <!-- Document Review status panel -->
+          <div id="panel-review-counts" class="panel-review-counts">0 notes · 0 highlights · 0 open</div>
           <div class="panel-section">
-            <span class="panel-section-label">ARCHIVE_REVIEW_STATUS</span>
+            <span class="panel-section-label">FILE STATUS</span>
             <div class="control-dropdown-grid">
               <select id="status-sel" class="ui-chrome" aria-label="Review status">
                 <option value="unread">Unread</option>
@@ -263,7 +277,7 @@
 
           <!-- Highlight and Note Action buttons panel -->
           <div class="panel-section">
-            <span class="panel-section-label">MARKUP_HIGHLIGHTS_AND_NOTES</span>
+            <span class="panel-section-label">HIGHLIGHTS &amp; NOTES</span>
             <div class="slider-group" style="margin-bottom:10px">
               <select id="highlight-kind-sel" class="voice-select-dropdown ui-chrome" aria-label="Highlight label">
                 <option value="important">Important</option>
@@ -273,8 +287,8 @@
               </select>
             </div>
             <div class="control-actions-grid">
-              <button class="open-btn ui-chrome" id="highlight-current-btn">Highlight</button>
-              <button class="open-btn ui-chrome" id="note-current-btn">Add Note</button>
+              <button class="open-btn ui-chrome review-action-btn" id="highlight-current-btn"><span class="material-symbols-outlined" aria-hidden="true">border_color</span><span>Highlight</span></button>
+              <button class="open-btn ui-chrome review-action-btn" id="note-current-btn"><span class="material-symbols-outlined" aria-hidden="true">add</span><span>Add Note</span></button>
               <button class="open-btn ui-chrome" id="notes-panel-btn">Open Notes</button>
               <button class="open-btn ui-chrome" id="save-notes-btn">Save Notes</button>
             </div>
@@ -282,7 +296,7 @@
           
           <!-- Playback Actions panel -->
           <div class="panel-section">
-            <span class="panel-section-label">PLAYBACK_CONTROLS</span>
+            <span class="panel-section-label">MORE PLAYBACK OPTIONS</span>
             
             <!-- Main transport buttons -->
             <div class="playback-controls">
@@ -315,7 +329,7 @@
 
   <!-- Sliding notes list panel drawer overlay -->
   <div id="notes-panel" class="notes-panel" aria-hidden="true">
-    <aside class="notes-drawer" aria-labelledby="notes-panel-title">
+    <aside class="notes-drawer" role="dialog" aria-modal="true" aria-labelledby="notes-panel-title">
       <div class="notes-header">
         <div>
           <div class="note-kicker" style="color:var(--primary)">Current File</div>
@@ -336,6 +350,7 @@
         <select id="export-filter-sel" aria-label="Export filter">
           <option value="all">Export all</option>
           <option value="notes">Notes only</option>
+          <option value="tasks">Open tasks</option>
           <option value="highlights">All highlights</option>
           <option value="highlight:important">Important highlights</option>
           <option value="highlight:needs_edit">Needs Edit highlights</option>
@@ -357,7 +372,7 @@
       <div class="note-kicker">Review Note</div>
       <h2 id="note-title">Section Note</h2>
       <blockquote id="note-section-excerpt"></blockquote>
-      <textarea id="note-text" rows="7" placeholder="What needs editing here?"></textarea>
+      <textarea id="note-text" aria-label="Review note" rows="7" placeholder="What needs editing here?"></textarea>
       <div class="note-actions">
         <button class="note-delete" id="note-delete-btn">Delete</button>
         <button class="note-cancel" id="note-cancel-btn">Cancel</button>
@@ -376,7 +391,7 @@
         <div class="tts-column">
           <div class="tts-column-header">
             <span class="tts-column-number">1.</span>
-            <span>VOCAL SYNTHESIS ENGINE</span>
+            <span id="tts-settings-title">VOCAL SYNTHESIS ENGINE</span>
           </div>
           <div class="tts-engine-cards" id="tts-engine-cards">
             <!-- Populated by JavaScript -->
@@ -439,19 +454,24 @@
   <!-- Script Libraries -->
   <!-- Floating Mini-Player for Mobile -->
   <div id="mini-player">
-    <span class="mini-pos" id="mini-pos-label">— / —</span>
+    <div class="transport-position"><span class="mini-pos" id="mini-pos-label">— / —</span><button id="rate-chip" aria-label="Playback speed">1.0×</button><button id="follow-btn" aria-pressed="true" title="Automatically keep the spoken passage visible">Follow audio</button></div>
+    <div class="transport-buttons">
     <button class="material-symbols-outlined" id="mini-btn-prev" title="Previous Sentence">skip_previous</button>
     <button class="mini-play-btn" id="mini-play-btn" title="Toggle Speech">
       <span class="material-symbols-outlined">play_arrow</span>
     </button>
     <button class="material-symbols-outlined" id="mini-btn-next" title="Next Sentence">skip_next</button>
+    </div>
+    <div class="transport-review"><button class="review-action-btn" id="bar-highlight-btn"><span class="material-symbols-outlined" aria-hidden="true">border_color</span><span>Highlight</span></button><button class="review-action-btn" id="bar-note-btn"><span class="material-symbols-outlined" aria-hidden="true">add</span><span>Add note</span></button></div>
   </div>
 
   <script src="./js/parser.js"></script>
+  <script src="./js/reading-follow.js"></script>
   <script src="./js/tts.js"></script>
   <script src="./js/library.js"></script>
   <script src="./js/pdf.js"></script>
   <script src="./js/app.js"></script>
+  <script src="./js/reader-ui.js"></script>
 
 </body>
 </html>
