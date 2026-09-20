@@ -268,6 +268,31 @@ public class AxiomPlaybackPlugin extends Plugin implements AxiomMediaPlaybackSer
     }
 
     @PluginMethod
+    public void getPlaybackState(PluginCall call) {
+        mainHandler.post(() -> {
+            try {
+                AxiomMediaPlaybackService service = getService();
+                JSObject ret = new JSObject();
+                if (service != null) {
+                    ret.put("isPlaying", service.isPlaying());
+                    ret.put("currentIndex", service.getCurrentIndex());
+                    ret.put("documentId", service.getCurrentDocId());
+                    ret.put("title", service.getCurrentTitle());
+                } else {
+                    ret.put("isPlaying", false);
+                    ret.put("currentIndex", 0);
+                    ret.put("documentId", "");
+                    ret.put("title", "");
+                }
+                call.resolve(ret);
+            } catch (Exception e) {
+                Log.e(TAG, "Error in getPlaybackState: " + e.getMessage(), e);
+                call.reject("Failed to get playback state: " + e.getMessage());
+            }
+        });
+    }
+
+    @PluginMethod
     public void getVoices(PluginCall call) {
         mainHandler.post(() -> {
             try {

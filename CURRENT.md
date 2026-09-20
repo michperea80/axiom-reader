@@ -1,5 +1,29 @@
 # Current work — AXIOM Reader
 
+## Cold-Start Playback Resumption (Android Auto & Wear OS) — 2026-09-20
+
+- **Requested Objective**:
+  Enable tapping the **Play** button on the Android Auto Desktop Head Unit (DHU) emulator, car screen, or Wear OS watch to wake up AXIOM Reader and resume playback even after the app has been closed or put to sleep by Android OS in the foreground/background.
+- **Root Cause & Technical Implementation**:
+  1. **Manifest Wakeup**: Added `<action android:name="android.intent.action.MEDIA_BUTTON" />` to `AxiomMediaPlaybackService` in `AndroidManifest.xml` so Android OS routes hardware and controller media events to the service when stopped.
+  2. **Native Queue Disk Persistence**: Added asynchronous disk persistence (`active_queue.json` in internal files) whenever `loadQueue()` is called, along with microsecond `SharedPreferences` sentence index tracking (`current_index`) updated on every sentence completion and seek.
+  3. **Headless Native Resumption (`onPlaybackResumption` & `onMediaButtonEvent`)**:
+     - Implemented `onPlaybackResumption` and `onMediaButtonEvent` in `MediaLibrarySession.Callback`.
+     - When invoked without an active WebView (`eventListener == null`), the service automatically restores `queueItems` from disk, falls back to `playbackOwner = "native"`, requests audio focus (`USAGE_MEDIA` / `CONTENT_TYPE_SPEECH`), and begins speaking immediately via Android native `TextToSpeech` (or streaming cloud audio via ExoPlayer) through car/HUD speakers.
+  4. **State Synchronization**: Added `@PluginMethod getPlaybackState` to `AxiomPlaybackPlugin.java` and `getNativePlaybackState()` to `playback-bridge.js` so when the phone app is reopened, the UI seamlessly syncs to the active sentence position.
+- **Affected Files**:
+  - `mobile/android/app/src/main/AndroidManifest.xml`
+  - `mobile/android/app/src/main/java/com/axiom/reader/playback/AxiomMediaPlaybackService.java`
+  - `mobile/android/app/src/main/java/com/axiom/reader/AxiomPlaybackPlugin.java`
+  - `js/bridge/playback-bridge.js`
+- **Verification Evidence**:
+  - Automated tests: `node tests/playback-control-regression.cjs` PASS.
+  - Native build: `npm run sync` and `.\gradlew.bat assembleDebug` completed with `BUILD SUCCESSFUL in 8s`.
+  - Deployment: Streamed install via ADB to physical device `RFGL742NXQV` (`app-debug.apk`), successfully updated `G:\My Drive\axiom-reader-debug.apk`.
+  - Runtime verification: Logcat confirms `AxiomMediaPlaybackService` creation, disk queue restore check, and native `TextToSpeech` initialization with `USAGE_MEDIA`.
+- **Next Action**:
+  - Test tapping Play on the Desktop Head Unit (`mobile/run-dhu.bat`) or watch after pausing and putting phone to sleep or closing the app.
+
 ## Diagnostic follow-up — 2026-09-20
 
 Resumed using the supplied device report and current source. This follow-up is static diagnosis; the earlier build, install, and watch observations below are inherited evidence, not newly verified. No application code or device state was changed.

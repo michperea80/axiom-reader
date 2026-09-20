@@ -384,6 +384,21 @@
     }
 
     /**
+     * Queries native playback service for live background playback state and active sentence index.
+     * @returns {Promise<Object|null>}
+     */
+    async getNativePlaybackState() {
+      if (this.isNative() && typeof this.nativePlugin.getPlaybackState === 'function') {
+        try {
+          return await this.nativePlugin.getPlaybackState();
+        } catch (err) {
+          console.warn('[Bridge] Error querying native playback state:', err);
+        }
+      }
+      return null;
+    }
+
+    /**
      * Speaks an immediate standalone sentence for voice preview without replacing the reading queue.
      * @param {Object} options
      * @param {string} options.text

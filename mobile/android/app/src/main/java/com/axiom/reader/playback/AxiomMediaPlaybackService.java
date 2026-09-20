@@ -15,8 +15,10 @@ import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.util.Log;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.view.KeyEvent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -42,9 +44,14 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -230,11 +237,15 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         initMediaSession();
         initNotificationProvider();
         initTextToSpeech();
+        restoreQueueFromDisk();
     }
 
     @Override
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+        if (queueItems.isEmpty()) {
+            restoreQueueFromDisk();
+        }
         return START_STICKY;
     }
 
@@ -341,6 +352,9 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         forwardingPlayer = new ForwardingPlayer(player) {
             @Override
             public void play() {
+                if (queueItems.isEmpty()) {
+                    restoreQueueFromDisk();
+                }
                 dispatchTransportPlay(true);
             }
 
@@ -386,6 +400,9 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
 
             @Override
             public int getPlaybackState() {
+                if (queueItems.isEmpty()) {
+                    restoreQueueFromDisk();
+                }
                 if (queueItems.isEmpty() && currentMediaItem == null) {
                     return Player.STATE_IDLE;
                 }
@@ -445,18 +462,21 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     }
 
     private void dispatchTransportPlay(boolean shouldPlay) {
-        Log.d(TAG, "dispatchTransportPlay: shouldPlay=" + shouldPlay + ", owner=" + playbackOwner + ", isPlaying=" + isPlaying);
+        Log.d(TAG, "dispatchTransportPlay: shouldPlay=" + shouldPlay + ", owner=" + playbackOwner + ", isPlaying=" + isPlaying + ", listener=" + (eventListener != null));
         acquireWakeLock();
         if (shouldPlay) {
             cancelPauseGracePeriod();
-            if ("native".equals(playbackOwner)) {
+            if (queueItems.isEmpty()) {
+                restoreQueueFromDisk();
+            }
+            if ("native".equals(playbackOwner) || eventListener == null) {
                 play();
             } else {
                 ensureSilencePlaying();
             }
         } else {
             startPauseGracePeriod();
-            if ("native".equals(playbackOwner)) {
+            if ("native".equals(playbackOwner) || eventListener == null) {
                 pause();
             } else if (player != null && player.isPlaying()) {
                 player.pause();
@@ -466,10 +486,13 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     }
 
     private void dispatchTransportSeek(int requestedIndex) {
+        if (queueItems.isEmpty()) {
+            restoreQueueFromDisk();
+        }
         if (queueItems.isEmpty()) return;
         int targetIndex = Math.max(0, Math.min(queueItems.size() - 1, requestedIndex));
         acquireWakeLock();
-        if ("native".equals(playbackOwner)) {
+        if ("native".equals(playbackOwner) || eventListener == null) {
             seekToIndex(targetIndex);
         }
         notifyTransportCommand("seek", targetIndex);
@@ -500,6 +523,10 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                     int page,
                     int pageSize,
                     @Nullable LibraryParams params) {
+
+                if (queueItems.isEmpty()) {
+                    restoreQueueFromDisk();
+                }
 
                 List<MediaItem> children = new ArrayList<>();
 
@@ -643,6 +670,55 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                     @NonNull SessionCommand customCommand,
                     @NonNull Bundle args) {
                 return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));
+            }
+
+            @NonNull
+            @Override
+            public ListenableFuture<MediaSession.MediaItemsWithStartPosition> onPlaybackResumption(
+                    @NonNull MediaSession session,
+                    @NonNull MediaSession.ControllerInfo controller) {
+                Log.i(TAG, "onPlaybackResumption invoked from: " + controller.getPackageName());
+                if (queueItems.isEmpty()) {
+                    restoreQueueFromDisk();
+                }
+                if (!queueItems.isEmpty() && currentIndex >= 0 && currentIndex < queueItems.size()) {
+                    AxiomQueueItem item = queueItems.get(currentIndex);
+                    updateMetadataForCurrentItem(item);
+                    mainHandler.post(() -> {
+                        if (eventListener == null) {
+                            playbackOwner = "native";
+                        }
+                        dispatchTransportPlay(true);
+                    });
+                    return Futures.immediateFuture(new MediaSession.MediaItemsWithStartPosition(
+                            ImmutableList.of(currentMediaItem), 0, 0));
+                }
+                return Futures.immediateFailedFuture(new UnsupportedOperationException("No queue available to resume"));
+            }
+
+            @Override
+            public boolean onMediaButtonEvent(
+                    @NonNull MediaSession session,
+                    @NonNull MediaSession.ControllerInfo controllerInfo,
+                    @NonNull Intent intent) {
+                Log.d(TAG, "onMediaButtonEvent received from " + controllerInfo.getPackageName() + ": " + intent);
+                if (queueItems.isEmpty()) {
+                    restoreQueueFromDisk();
+                }
+                KeyEvent keyEvent = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                if (keyEvent != null && keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+                    int keyCode = keyEvent.getKeyCode();
+                    if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
+                        if (eventListener == null) {
+                            playbackOwner = "native";
+                        }
+                        if (!isPlaying) {
+                            dispatchTransportPlay(true);
+                            return true;
+                        }
+                    }
+                }
+                return MediaLibrarySession.Callback.super.onMediaButtonEvent(session, controllerInfo, intent);
             }
         };
 
@@ -859,6 +935,121 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
             updateMetadataForCurrentItem(queueItems.get(currentIndex));
             startPauseGracePeriod();
         }
+        saveQueueToDisk();
+    }
+
+    private void saveCurrentIndexToPrefs() {
+        try {
+            getSharedPreferences("axiom_playback_prefs", Context.MODE_PRIVATE)
+                    .edit()
+                    .putInt("current_index", currentIndex)
+                    .putString("current_doc_id", currentDocId)
+                    .apply();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to save current index to prefs: " + e.getMessage());
+        }
+    }
+
+    private void saveQueueToDisk() {
+        final List<AxiomQueueItem> itemsCopy;
+        final String docIdCopy = this.currentDocId;
+        final String titleCopy = this.currentTitle;
+        final float speedCopy = this.currentSpeed;
+        final String ownerCopy = this.playbackOwner;
+        synchronized (queueItems) {
+            itemsCopy = new ArrayList<>(this.queueItems);
+        }
+
+        new Thread(() -> {
+            try {
+                JSONObject root = new JSONObject();
+                root.put("docId", docIdCopy);
+                root.put("title", titleCopy);
+                root.put("speed", (double) speedCopy);
+                root.put("playbackOwner", ownerCopy);
+
+                JSONArray itemsArr = new JSONArray();
+                for (AxiomQueueItem item : itemsCopy) {
+                    JSONObject itemObj = new JSONObject();
+                    itemObj.put("index", item.index);
+                    itemObj.put("blockIdx", item.blockIdx);
+                    itemObj.put("text", item.text);
+                    itemObj.put("speechText", item.speechText);
+                    if (item.audioUri != null) {
+                        itemObj.put("audioUri", item.audioUri);
+                    }
+                    itemsArr.put(itemObj);
+                }
+                root.put("items", itemsArr);
+
+                File queueFile = new File(getFilesDir(), "active_queue.json");
+                File tempFile = new File(getFilesDir(), "active_queue.json.tmp");
+                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                    fos.write(root.toString().getBytes(StandardCharsets.UTF_8));
+                }
+                if (tempFile.renameTo(queueFile)) {
+                    Log.d(TAG, "Successfully saved active queue to disk (" + itemsCopy.size() + " items)");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to save queue to disk: " + e.getMessage());
+            }
+        }).start();
+
+        saveCurrentIndexToPrefs();
+    }
+
+    public synchronized boolean restoreQueueFromDisk() {
+        if (!queueItems.isEmpty()) {
+            return true;
+        }
+        File queueFile = new File(getFilesDir(), "active_queue.json");
+        if (!queueFile.exists() || queueFile.length() == 0) {
+            Log.d(TAG, "No saved queue file on disk");
+            return false;
+        }
+
+        try (FileInputStream fis = new FileInputStream(queueFile)) {
+            byte[] data = new byte[(int) queueFile.length()];
+            int read = fis.read(data);
+            if (read <= 0) return false;
+            String jsonStr = new String(data, StandardCharsets.UTF_8);
+            JSONObject root = new JSONObject(jsonStr);
+
+            this.currentDocId = root.optString("docId", "unknown");
+            this.currentTitle = root.optString("title", "AXIOM Reader");
+            this.currentSpeed = (float) root.optDouble("speed", 1.0);
+            this.playbackOwner = (eventListener == null) ? "native" : root.optString("playbackOwner", "native");
+
+            int savedIndex = getSharedPreferences("axiom_playback_prefs", Context.MODE_PRIVATE)
+                    .getInt("current_index", 0);
+
+            JSONArray itemsArr = root.getJSONArray("items");
+            this.queueItems.clear();
+            for (int i = 0; i < itemsArr.length(); i++) {
+                JSONObject obj = itemsArr.getJSONObject(i);
+                int idx = obj.optInt("index", i);
+                int blockIdx = obj.optInt("blockIdx", i);
+                String text = obj.optString("text", "");
+                String speechText = obj.optString("speechText", text);
+                String audioUri = obj.has("audioUri") ? obj.optString("audioUri", null) : null;
+                this.queueItems.add(new AxiomQueueItem(idx, blockIdx, text, speechText, audioUri));
+            }
+
+            this.currentIndex = Math.max(0, Math.min(this.queueItems.size() - 1, savedIndex));
+
+            if (player != null) {
+                player.setPlaybackParameters(new PlaybackParameters(this.currentSpeed));
+            }
+
+            if (!this.queueItems.isEmpty()) {
+                updateMetadataForCurrentItem(this.queueItems.get(this.currentIndex));
+                Log.i(TAG, "Restored active queue from disk: " + this.queueItems.size() + " items, sentence=" + this.currentIndex + ", title=" + this.currentTitle);
+                return true;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to restore queue from disk: " + e.getMessage());
+        }
+        return false;
     }
 
     private void updateMetadataForCurrentItem(AxiomQueueItem item) {
@@ -886,6 +1077,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
             if (player != null) {
                 player.setPlaylistMetadata(currentMediaMetadata);
             }
+            saveCurrentIndexToPrefs();
         } catch (Exception e) {
             Log.w(TAG, "Failed to update playlist metadata: " + e.getMessage());
         }
@@ -1086,6 +1278,14 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
 
     public boolean isPlaying() {
         return isPlaying;
+    }
+
+    public String getCurrentDocId() {
+        return currentDocId;
+    }
+
+    public String getCurrentTitle() {
+        return currentTitle;
     }
 
     public List<Map<String, String>> getAvailableVoices() {
