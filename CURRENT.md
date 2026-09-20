@@ -81,5 +81,28 @@ Initialized September 8, 2026 during harness cleanup.
   3. ExoPlayer silence loop management for unobstructed phone default TTS.
   4. Media3 `ForwardingPlayer` transport command routing to WebView shell.
   5. Isolated voice preview via non-destructive `speakText` API.
-- Next action: Address remaining issues to fix as specified by the user.
+
+## Android Auto & New Icons Update — 2026-09-20
+
+- Objective:
+  1. Fix Android Auto closing when pausing playback (prevent `ForwardingPlayer` from dropping to `STATE_IDLE`).
+  2. Fix missing app icon and artwork in Android Auto (`app_icon.png` raster artwork on MediaItems and service attributes).
+  3. Fix audio routing through car speakers on initial launch (acquire `AUDIOFOCUS_GAIN` on `USAGE_MEDIA` / `CONTENT_TYPE_SPEECH`).
+  4. Integrate correct application and notification icons from `New Icons` across all density buckets and web assets.
+  5. Note low-priority backlog bug: Legacy phone default voice cannot be controlled from watch ("nothing playing").
+- Affected files:
+  - `mobile/android/app/src/main/res/drawable/ic_notification.png` & densities: White monochrome notification icon generated from `Notification.png`. Old `ic_notification.xml` removed.
+  - `mobile/android/app/src/main/res/drawable/app_icon.png`: 512x512 raster PNG for MediaSession / Android Auto artwork.
+  - `mobile/android/app/src/main/res/mipmap-*/`: Generated launcher, round, and adaptive foreground icons from `icon_512x512.png`.
+  - `mobile/android/app/src/main/res/values/ic_launcher_background.xml`: Set background to `#000000`.
+  - `mobile/android/app/src/main/AndroidManifest.xml`: Added `icon`, `roundIcon`, and `label` to `AxiomMediaPlaybackService`.
+  - `mobile/android/app/src/main/java/com/axiom/reader/playback/AxiomMediaPlaybackService.java`:
+    - `ForwardingPlayer.getPlaybackState()` returns `STATE_READY` on pause (when queue is loaded).
+    - `getAppIconUri()` sets raster `app_icon.png` artwork on root, categories, passages, and active track metadata.
+    - Explicit AudioFocus management via `AudioManager` and `AudioFocusRequest` with `USAGE_MEDIA` / `CONTENT_TYPE_SPEECH` to route vehicle audio directly to car speakers on launch.
+  - `icons/icon-192.png`, `icons/icon-512.png`: Updated PWA web icons.
+- Backlog / Known issues:
+  - Low priority: Legacy phone default voice playback cannot be controlled from Wear OS watch ("nothing playing"). Cloud voices (Neural2, Chirp 3 HD, Gemini Flash) are primary and fully functional.
+- Next action: Build updated APK, publish to Google Drive and GitHub, and verify on device / Android Auto.
+
 

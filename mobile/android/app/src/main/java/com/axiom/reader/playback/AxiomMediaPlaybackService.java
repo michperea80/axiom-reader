@@ -14,6 +14,9 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.util.Log;
+import android.content.Context;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -87,6 +90,72 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     private MediaItem currentMediaItem = null;
     // "web" means the WebView owns audible playback; "native" means this service does.
     private String playbackOwner = "web";
+    private AudioManager audioManager = null;
+    private AudioFocusRequest audioFocusRequest = null;
+    private boolean hasAudioFocus = false;
+
+    private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = focusChange -> {
+        Log.d(TAG, "Audio focus changed: " + focusChange);
+        if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            hasAudioFocus = false;
+            dispatchTransportPlay(false);
+        } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+            hasAudioFocus = true;
+        }
+    };
+
+    private Uri getAppIconUri() {
+        return Uri.parse("android.resource://" + getPackageName() + "/" + R.drawable.app_icon);
+    }
+
+    private synchronized boolean requestAudioFocus() {
+        if (hasAudioFocus) return true;
+        if (audioManager == null) {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        }
+        if (audioManager == null) return false;
+
+        int res;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.media.AudioAttributes playbackAttributes = new android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build();
+            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(playbackAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener(audioFocusChangeListener, mainHandler)
+                    .build();
+            res = audioManager.requestAudioFocus(audioFocusRequest);
+        } else {
+            res = audioManager.requestAudioFocus(
+                    audioFocusChangeListener,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN
+            );
+        }
+
+        hasAudioFocus = (res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
+        Log.d(TAG, "requestAudioFocus result: " + res + " (granted=" + hasAudioFocus + ")");
+        return hasAudioFocus;
+    }
+
+    private synchronized void abandonAudioFocus() {
+        if (!hasAudioFocus) return;
+        if (audioManager == null) return;
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && audioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            } else {
+                audioManager.abandonAudioFocus(audioFocusChangeListener);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to abandon audio focus: " + e.getMessage());
+        }
+        hasAudioFocus = false;
+        Log.d(TAG, "abandonAudioFocus completed");
+    }
 
     public interface PlaybackEventListener {
         void onStateChanged(String state);
@@ -205,7 +274,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                 .build();
 
         player = new ExoPlayer.Builder(this)
-                .setAudioAttributes(audioAttributes, false /* handleAudioFocus false to avoid competing with TextToSpeech or Web Audio */)
+                .setAudioAttributes(audioAttributes, true /* handleAudioFocus true to ensure Android Auto / vehicle audio routing */)
                 .setHandleAudioBecomingNoisy(true)
                 .setWakeMode(C.WAKE_MODE_LOCAL)
                 .build();
@@ -290,7 +359,10 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
 
             @Override
             public int getPlaybackState() {
-                return AxiomMediaPlaybackService.this.isPlaying ? Player.STATE_READY : Player.STATE_IDLE;
+                if (queueItems.isEmpty() && currentMediaItem == null) {
+                    return Player.STATE_IDLE;
+                }
+                return Player.STATE_READY;
             }
 
             @Override
@@ -391,6 +463,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                             .setMediaMetadata(new MediaMetadata.Builder()
                                     .setTitle("Current Document")
                                     .setSubtitle(currentTitle)
+                                    .setArtworkUri(getAppIconUri())
                                     .setIsPlayable(false)
                                     .setIsBrowsable(true)
                                     .build())
@@ -401,6 +474,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                             .setMediaMetadata(new MediaMetadata.Builder()
                                     .setTitle("Passages & Sentences")
                                     .setSubtitle(queueItems.size() + " passages available")
+                                    .setArtworkUri(getAppIconUri())
                                     .setIsPlayable(false)
                                     .setIsBrowsable(true)
                                     .build())
@@ -417,6 +491,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                             .setMediaMetadata(new MediaMetadata.Builder()
                                     .setTitle(currentTitle)
                                     .setSubtitle(posDesc)
+                                    .setArtworkUri(getAppIconUri())
                                     .setIsPlayable(true)
                                     .setIsBrowsable(false)
                                     .build())
@@ -436,6 +511,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                                 .setMediaMetadata(new MediaMetadata.Builder()
                                         .setTitle((item.index + 1) + ". " + preview)
                                         .setSubtitle(currentTitle)
+                                        .setArtworkUri(getAppIconUri())
                                         .setIsPlayable(true)
                                         .setIsBrowsable(false)
                                         .build())
@@ -458,6 +534,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                         .setMediaId("root")
                         .setMediaMetadata(new MediaMetadata.Builder()
                                 .setTitle("AXIOM Reader")
+                                .setArtworkUri(getAppIconUri())
                                 .setIsPlayable(false)
                                 .setIsBrowsable(true)
                                 .build())
@@ -477,6 +554,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                             .setMediaMetadata(new MediaMetadata.Builder()
                                     .setTitle(currentTitle)
                                     .setSubtitle("Sentence " + (currentIndex + 1) + " of " + queueItems.size())
+                                    .setArtworkUri(getAppIconUri())
                                     .setIsPlayable(true)
                                     .setIsBrowsable(false)
                                     .build())
@@ -694,6 +772,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     }
 
     private void ensureSilencePlaying() {
+        requestAudioFocus();
         if (player != null && !player.isPlaying()) {
             File silence = getOrCreateSilenceWav();
             if (silence.exists()) {
@@ -749,7 +828,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                     .setDisplayTitle(currentTitle != null ? currentTitle : "AXIOM Reader")
                     .setSubtitle(passage)
                     .setDescription(positionDesc)
-                    .setArtworkUri(Uri.parse("android.resource://" + getPackageName() + "/" + R.mipmap.ic_launcher))
+                    .setArtworkUri(getAppIconUri())
                     .build();
 
             currentMediaItem = new MediaItem.Builder()
@@ -854,6 +933,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         if (isPlaying) return;
         isPlaying = true;
         acquireWakeLock();
+        requestAudioFocus();
         speakCurrentSentence();
         if (eventListener != null) {
             eventListener.onStateChanged("playing");
@@ -877,6 +957,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         pendingPlayAfterTtsInit = false;
         invalidateActiveUtterance();
         releaseWakeLock();
+        abandonAudioFocus();
         if (tts != null) tts.stop();
         if (player != null) {
             player.stop();
@@ -896,6 +977,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         if ("playing".equals(state)) {
             this.isPlaying = true;
             acquireWakeLock();
+            requestAudioFocus();
             ensureSilencePlaying();
         } else if ("paused".equals(state) || "stopped".equals(state)) {
             this.isPlaying = false;
@@ -905,6 +987,9 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
             }
             if (tts != null) {
                 tts.stop();
+            }
+            if ("stopped".equals(state)) {
+                abandonAudioFocus();
             }
         }
     }
@@ -1002,6 +1087,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         Log.i(TAG, "Destroying AxiomMediaPlaybackService...");
         isPlaying = false;
         releaseWakeLock();
+        abandonAudioFocus();
         if (mediaLibrarySession != null) {
             removeSession(mediaLibrarySession);
             mediaLibrarySession.release();
