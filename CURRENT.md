@@ -101,8 +101,28 @@ Initialized September 8, 2026 during harness cleanup.
     - `getAppIconUri()` sets raster `app_icon.png` artwork on root, categories, passages, and active track metadata.
     - Explicit AudioFocus management via `AudioManager` and `AudioFocusRequest` with `USAGE_MEDIA` / `CONTENT_TYPE_SPEECH` to route vehicle audio directly to car speakers on launch.
   - `icons/icon-192.png`, `icons/icon-512.png`: Updated PWA web icons.
-- Backlog / Known issues:
-  - Low priority: Legacy phone default voice playback cannot be controlled from Wear OS watch ("nothing playing"). Cloud voices (Neural2, Chirp 3 HD, Gemini Flash) are primary and fully functional.
-- Next action: Build updated APK, publish to Google Drive and GitHub, and verify on device / Android Auto.
+
+## Audio Focus Regression Fix & Wear OS Legacy Voice Resolution — 2026-09-20
+
+- Objective:
+  1. Fix rapid play/pause button flashing and audio failure on phone and Android Auto (Desktop Head Unit & vehicle).
+  2. Resolve audio focus conflict between ExoPlayer internal focus handler and service `AudioManager.requestAudioFocus()`.
+  3. Ensure Android Auto and Wear OS (Pixel Watch) stay active and responsive during both Cloud and Legacy Phone Default TTS playback.
+- Root Cause & Resolution:
+  1. **Audio Focus Conflict Loop**: In commit `eb17efd`, ExoPlayer was configured with `setAudioAttributes(..., true)` while the service simultaneously registered a manual `AudioFocusRequest` with an `OnAudioFocusChangeListener`. When `player.play()` was called, ExoPlayer requested focus from `AudioManager`, causing Android's `AudioService` to send `AUDIOFOCUS_LOSS (-1)` to the service's listener. The listener immediately called `dispatchTransportPlay(false)`, pausing playback within 8ms and causing a rapid flashing loop between play and pause. Resolved by reverting ExoPlayer's `handleAudioFocus` to `false` so the service manages the single unified `AudioFocusRequest`, and guarding the focus loss listener with `if (isPlaying)`.
+  2. **Active Silence Keepalive for Local TTS**: In `speakCurrentSentence()`, previously ExoPlayer was paused during local TTS, leaving MediaSession with no active playing track and causing Wear OS to report "nothing playing" and Android Auto to drop the active car audio channel. Resolved by calling `ensureSilencePlaying()` during local TTS so ExoPlayer's silent AudioTrack loops seamlessly while Android TTS speaks over `STREAM_MUSIC`, keeping MediaSession, Wear OS, and Android Auto in the `playing` state.
+- Affected files:
+  - `mobile/android/app/src/main/java/com/axiom/reader/playback/AxiomMediaPlaybackService.java`:
+    - `initPlayer()`: Set `handleAudioFocus = false` to prevent self-preemption.
+    - `audioFocusChangeListener`: Added `if (isPlaying)` guard to prevent spurious pauses.
+    - `speakCurrentSentence()`: Maintained `ensureSilencePlaying()` during local TTS for MediaSession/Watch/Auto continuity.
+- Verification evidence:
+  - Automated tests: `tests/playback-control-regression.cjs` passed (5/5 PASS).
+  - Native build: `npm run sync` and `.\gradlew.bat assembleDebug` succeeded (`BUILD SUCCESSFUL in 10s`).
+  - Device install: Fresh APK installed to connected Samsung Galaxy Z Fold (`RFGL742NXQV`) via ADB (`Performing Streamed Install. Success`).
+  - MediaSession dispatch verification: Dispatched `play` and `pause` via `adb shell cmd media_session dispatch` to `tag=androidx.media3.session.id.AxiomMediaSession`. Verified in logcat: play command routed cleanly to `onTransportCommand`, no audio focus loss (-1) or flashing loop occurred, and pause command cleanly transitioned playback state to `paused`.
+  - Distribution: Copied updated APK to `G:\My Drive\axiom-reader-debug.apk`.
+- Next action: Test on Android Auto Desktop Head Unit (`mobile/run-dhu.bat`) and in vehicle.
+
 
 

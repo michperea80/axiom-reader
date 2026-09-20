@@ -98,7 +98,9 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         Log.d(TAG, "Audio focus changed: " + focusChange);
         if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
             hasAudioFocus = false;
-            dispatchTransportPlay(false);
+            if (isPlaying) {
+                dispatchTransportPlay(false);
+            }
         } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
             hasAudioFocus = true;
         }
@@ -274,7 +276,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                 .build();
 
         player = new ExoPlayer.Builder(this)
-                .setAudioAttributes(audioAttributes, true /* handleAudioFocus true to ensure Android Auto / vehicle audio routing */)
+                .setAudioAttributes(audioAttributes, false /* handleAudioFocus false to avoid competing with service AudioManager focus */)
                 .setHandleAudioBecomingNoisy(true)
                 .setWakeMode(C.WAKE_MODE_LOCAL)
                 .build();
@@ -880,10 +882,8 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                 return;
             }
 
-            // Pause ExoPlayer so silence AudioTrack does not compete with Android TTS audio stream
-            if (player != null && player.isPlaying()) {
-                player.pause();
-            }
+            // Keep ExoPlayer silence AudioTrack active so MediaSession / Wear OS / Android Auto stays in playing state
+            ensureSilencePlaying();
 
             tts.setSpeechRate(currentSpeed);
             Bundle params = new Bundle();
