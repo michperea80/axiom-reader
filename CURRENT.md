@@ -116,13 +116,32 @@ Initialized September 8, 2026 during harness cleanup.
     - `initPlayer()`: Set `handleAudioFocus = false` to prevent self-preemption.
     - `audioFocusChangeListener`: Added `if (isPlaying)` guard to prevent spurious pauses.
     - `speakCurrentSentence()`: Maintained `ensureSilencePlaying()` during local TTS for MediaSession/Watch/Auto continuity.
+## Pause Sleep & Lock Screen/Notification Persistence Resolution — 2026-09-20
+
+- Objective:
+  1. Prevent the app from being put to sleep after being paused for a few minutes.
+  2. Prevent phone playback controls from closing out in the notification bar and lock screen on pause.
+  3. Ensure pressing play on the Wear OS watch or Android Auto HUD reliably resumes playback even after minutes of screen-off pause.
+- Root Cause & Resolution:
+  1. **Foreground Service Dropped on Pause**: Media3's default `MediaSessionService.onUpdateNotification` called `stopForeground(false)` when `playWhenReady == false`. On modern Android (especially Samsung One UI), dropping out of foreground causes the app to transition to cached/frozen state within 2 minutes of screen-off, and SystemUI drops the media notification from the lock screen and notification bar. Resolved by overriding `onUpdateNotification` to keep the service in the FOREGROUND (`shouldBeForeground = true`) during an active 20-minute **pause grace period** whenever a document is loaded.
+  2. **Samsung App Freezer & CPU Sleep**: `releaseWakeLock()` was being called immediately on pause, allowing the CPU to suspend and Chromium's background WebView JavaScript to freeze. When the watch or HUD sent a play command, `dispatchTransportPlay` routed to a suspended WebView, failing to resume. Resolved by keeping `dispatchTransportPlay` self-sufficient: acquiring a wake lock immediately, directly calling `play()` in native TTS mode, and looping silence in web mode to wake up the audio pipeline and WebView.
+  3. **Premature Termination on `onTaskRemoved`**: Media3's default `onTaskRemoved` called `stopSelf()` if playback was not ongoing. Overrode `onTaskRemoved` to ensure the service is never terminated while a document queue is loaded.
+  4. **Lock Screen Visibility**: Configured `channel.setLockscreenVisibility(VISIBILITY_PUBLIC)` on `axiom_playback_channel` so notification controls remain accessible on the lock screen.
+- Affected files:
+  - `mobile/android/app/src/main/java/com/axiom/reader/playback/AxiomMediaPlaybackService.java`:
+    - Added `startPauseGracePeriod()`, `cancelPauseGracePeriod()`, and 20-minute timeout runnable.
+    - Overrode `onUpdateNotification` to retain foreground status while paused with a loaded document.
+    - Overrode `onTaskRemoved` to prevent service termination when recent tasks are swiped or trimmed.
+    - Updated `dispatchTransportPlay` to acquire wake lock, cancel pause timeout, and execute native `play()` directly.
+    - Set `channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC)`.
 - Verification evidence:
   - Automated tests: `tests/playback-control-regression.cjs` passed (5/5 PASS).
-  - Native build: `npm run sync` and `.\gradlew.bat assembleDebug` succeeded (`BUILD SUCCESSFUL in 10s`).
-  - Device install: Fresh APK installed to connected Samsung Galaxy Z Fold (`RFGL742NXQV`) via ADB (`Performing Streamed Install. Success`).
-  - MediaSession dispatch verification: Dispatched `play` and `pause` via `adb shell cmd media_session dispatch` to `tag=androidx.media3.session.id.AxiomMediaSession`. Verified in logcat: play command routed cleanly to `onTransportCommand`, no audio focus loss (-1) or flashing loop occurred, and pause command cleanly transitioned playback state to `paused`.
-  - Distribution: Copied updated APK to `G:\My Drive\axiom-reader-debug.apk`.
-- Next action: Test on Android Auto Desktop Head Unit (`mobile/run-dhu.bat`) and in vehicle.
+  - Native build: `npm run sync` and `.\gradlew.bat assembleDebug` succeeded (`BUILD SUCCESSFUL in 11s`).
+  - Device install: Streamed install via ADB to Samsung Galaxy Z Fold (`RFGL742NXQV`).
+  - Dumpsys verification: `dumpsys notification` confirmed notification `id=1001` remains in `flags=ONLY_ALERT_ONCE|NO_CLEAR|FOREGROUND_SERVICE` and `vis=PUBLIC` while paused.
+  - MediaSession resume verification: Dispatched `play` -> `pause` -> waited -> dispatched `play` via `adb shell cmd media_session dispatch`. Logcat confirmed immediate CPU wakeup, `dispatchTransportPlay`, and audio playback resumption.
+  - Distribution: Copied updated APK to `G:\My Drive\axiom-reader-debug.apk` and uploaded to GitHub release `v0.9.0-debug`.
+
 
 
 

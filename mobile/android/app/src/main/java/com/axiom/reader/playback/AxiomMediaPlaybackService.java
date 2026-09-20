@@ -93,6 +93,30 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     private AudioManager audioManager = null;
     private AudioFocusRequest audioFocusRequest = null;
     private boolean hasAudioFocus = false;
+    private boolean isWithinPauseGracePeriod = false;
+    private final Runnable pauseGracePeriodTimeoutRunnable = () -> {
+        Log.i(TAG, "Pause grace period expired (20 min). Releasing foreground.");
+        isWithinPauseGracePeriod = false;
+        releaseWakeLock();
+        if (mediaLibrarySession != null) {
+            onUpdateNotification(mediaLibrarySession, false);
+        }
+    };
+
+    private void startPauseGracePeriod() {
+        mainHandler.removeCallbacks(pauseGracePeriodTimeoutRunnable);
+        isWithinPauseGracePeriod = true;
+        // 20 minutes keep-alive so Android Auto, Watch, and lock screen remain fully responsive
+        mainHandler.postDelayed(pauseGracePeriodTimeoutRunnable, 20 * 60 * 1000L);
+        if (mediaLibrarySession != null) {
+            onUpdateNotification(mediaLibrarySession, true);
+        }
+    }
+
+    private void cancelPauseGracePeriod() {
+        mainHandler.removeCallbacks(pauseGracePeriodTimeoutRunnable);
+        isWithinPauseGracePeriod = false;
+    }
 
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = focusChange -> {
         Log.d(TAG, "Audio focus changed: " + focusChange);
@@ -254,6 +278,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                     NotificationManager.IMPORTANCE_LOW
             );
             channel.setDescription("Audio playback and lock screen controls");
+            channel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);
@@ -420,14 +445,33 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     }
 
     private void dispatchTransportPlay(boolean shouldPlay) {
-        // Controllers (watch, lock screen, headset) always route through the WebView.
-        // It owns reader UI state and invokes the appropriate native action for native queues.
+        Log.d(TAG, "dispatchTransportPlay: shouldPlay=" + shouldPlay + ", owner=" + playbackOwner + ", isPlaying=" + isPlaying);
+        acquireWakeLock();
+        if (shouldPlay) {
+            cancelPauseGracePeriod();
+            if ("native".equals(playbackOwner)) {
+                play();
+            } else {
+                ensureSilencePlaying();
+            }
+        } else {
+            startPauseGracePeriod();
+            if ("native".equals(playbackOwner)) {
+                pause();
+            } else if (player != null && player.isPlaying()) {
+                player.pause();
+            }
+        }
         notifyTransportCommand(shouldPlay ? "play" : "pause", currentIndex);
     }
 
     private void dispatchTransportSeek(int requestedIndex) {
         if (queueItems.isEmpty()) return;
         int targetIndex = Math.max(0, Math.min(queueItems.size() - 1, requestedIndex));
+        acquireWakeLock();
+        if ("native".equals(playbackOwner)) {
+            seekToIndex(targetIndex);
+        }
         notifyTransportCommand("seek", targetIndex);
     }
 
@@ -813,6 +857,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
 
         if (currentIndex < queueItems.size()) {
             updateMetadataForCurrentItem(queueItems.get(currentIndex));
+            startPauseGracePeriod();
         }
     }
 
@@ -932,6 +977,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     public synchronized void play() {
         if (isPlaying) return;
         isPlaying = true;
+        cancelPauseGracePeriod();
         acquireWakeLock();
         requestAudioFocus();
         speakCurrentSentence();
@@ -944,7 +990,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         isPlaying = false;
         pendingPlayAfterTtsInit = false;
         invalidateActiveUtterance();
-        releaseWakeLock();
+        startPauseGracePeriod();
         if (tts != null) tts.stop();
         if (player != null) player.pause();
         if (eventListener != null) {
@@ -956,6 +1002,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         isPlaying = false;
         pendingPlayAfterTtsInit = false;
         invalidateActiveUtterance();
+        cancelPauseGracePeriod();
         releaseWakeLock();
         abandonAudioFocus();
         if (tts != null) tts.stop();
@@ -966,6 +1013,16 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         if (eventListener != null) {
             eventListener.onStateChanged("stopped");
         }
+        if (mediaLibrarySession != null) {
+            onUpdateNotification(mediaLibrarySession, false);
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE);
+            } else {
+                stopForeground(true);
+            }
+        } catch (Exception ignored) {}
     }
 
     public synchronized void setExternalPlaybackState(String state, int index) {
@@ -976,20 +1033,24 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
 
         if ("playing".equals(state)) {
             this.isPlaying = true;
+            cancelPauseGracePeriod();
             acquireWakeLock();
             requestAudioFocus();
             ensureSilencePlaying();
         } else if ("paused".equals(state) || "stopped".equals(state)) {
             this.isPlaying = false;
-            releaseWakeLock();
+            if ("paused".equals(state)) {
+                startPauseGracePeriod();
+            } else {
+                cancelPauseGracePeriod();
+                releaseWakeLock();
+                abandonAudioFocus();
+            }
             if (player != null && player.isPlaying()) {
                 player.pause();
             }
             if (tts != null) {
                 tts.stop();
-            }
-            if ("stopped".equals(state)) {
-                abandonAudioFocus();
             }
         }
     }
@@ -1083,9 +1144,24 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     }
 
     @Override
+    public void onUpdateNotification(@NonNull MediaSession session, boolean startInForegroundRequired) {
+        boolean shouldBeForeground = startInForegroundRequired || isPlaying || (isWithinPauseGracePeriod && !queueItems.isEmpty());
+        super.onUpdateNotification(session, shouldBeForeground);
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        Log.i(TAG, "onTaskRemoved called");
+        if (queueItems.isEmpty()) {
+            super.onTaskRemoved(rootIntent);
+        }
+    }
+
+    @Override
     public void onDestroy() {
         Log.i(TAG, "Destroying AxiomMediaPlaybackService...");
         isPlaying = false;
+        cancelPauseGracePeriod();
         releaseWakeLock();
         abandonAudioFocus();
         if (mediaLibrarySession != null) {
