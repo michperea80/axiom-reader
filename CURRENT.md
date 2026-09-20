@@ -1,6 +1,44 @@
 # Current work — AXIOM Reader
 
-## Cold-Start Playback Resumption (Android Auto & Wear OS) — 2026-09-20
+## Android Auto & Wear OS Remote Wakeup & Resumption Resolution — 2026-09-20
+
+- **Requested Objective**:
+  Ensure pressing the **Play** button on the Android Auto Desktop Head Unit (DHU) emulator, car screen, or Wear OS watch reliably wakes up AXIOM Reader and resumes audio playback, even after being paused, put to sleep, or closed in the foreground.
+- **Root Causes Diagnosed & Resolved**:
+  1. **Cold-Start TTS Initialization Deadlock**:
+     - When woken up by remote Play without an existing service process, `initTextToSpeech` was initializing asynchronously while `play()` set `isPlaying = true`. When TTS finished initializing 300ms later, its callback re-invoked `play()`, which immediately aborted on `if (isPlaying) return;`. The current sentence was never spoken.
+     - Resolved in `AxiomMediaPlaybackService.java`: `initTextToSpeech` callback now directly invokes `speakCurrentSentence()` when `isPlaying` is true. Additionally, `play()` verifies whether TTS is ready and immediately speaks if active utterance is pending.
+  2. **Remote Play Enforced Native Audio Ownership**:
+     - Remote Play commands (`dispatchTransportPlay(true)`) previously checked `if ("native".equals(playbackOwner) || eventListener == null)`. When a cloud voice had recorded `"playbackOwner": "web"` in `active_queue.json`, remote play only looped silence and sent an event to the sleeping/locked WebView, which could not play Web Audio.
+     - Resolved: Remote transport commands from Android Auto, Wear OS, lock screen, and Bluetooth headsets now unconditionally assign `playbackOwner = "native"` and call `play()`, ensuring robust native speech through car/watch speakers without WebView dependency.
+  3. **Media3 State Synchronization via `ForwardingPlayer`**:
+     - `ForwardingPlayer.play()`, `pause()`, and `setPlayWhenReady()` now invoke `super.play()`, `super.pause()`, and `super.setPlayWhenReady()` so ExoPlayer's `playWhenReady` updates immediately, ensuring Media3 controllers on Android Auto and Wear OS receive prompt state confirmations.
+  4. **Decoupled Web Shell Remote Transport Handling**:
+     - `tts.js` `transportCommand` listener now updates UI state (`setBtn`, `playing`, `updateMediaSession`, and sentence highlighting) without re-invoking `startTTS()`, eliminating competing synthesis loops and queue wipes.
+  5. **Notification Channel & TTS Stream Warning Fixes**:
+     - Reordered `onCreate()` so `initNotificationProvider()` runs before `initMediaSession()`, binding notifications to `axiom_playback_channel` instead of falling back to default.
+     - Changed `KEY_PARAM_STREAM` in `Bundle params` to Integer `AudioManager.STREAM_MUSIC`, removing Android system warnings.
+     - Added `startPauseGracePeriod()` to `restoreQueueFromDisk()` to preserve foreground eligibility on disk restoration.
+- **Affected Files**:
+  - `mobile/android/app/src/main/java/com/axiom/reader/playback/AxiomMediaPlaybackService.java`
+  - `mobile/android/app/src/main/AndroidManifest.xml`
+  - `js/tts.js`
+  - `sw.js`
+- **Verification Evidence**:
+  - Automated Tests: `node tests/playback-control-regression.cjs` PASS (5/5).
+  - Native Compilation: `npm run sync` and `.\gradlew.bat assembleDebug` succeeded with `BUILD SUCCESSFUL in 11s`.
+  - Device Installation: Streamed install to Samsung Galaxy Z Fold (`RFGL742NXQV`) succeeded.
+  - Runtime Wakeup Verification:
+    - Force-stopped app (`am force-stop com.axiom.reader`).
+    - Dispatched `cmd media_session dispatch play` to cold-started service.
+    - Verified logcat: service started, restored queue from disk (985 items), acquired `PARTIAL_WAKE_LOCK`, requested `USAGE_MEDIA` focus, initialized TTS, and spoke sentence 9 immediately (`tts.speak sentence 9 (length 138), result: 0`, `TTS utterance onStart: utt_1_9`).
+    - Verified progression: sentence 9 finished (`onDone`) and sentence 10 spoke automatically.
+    - Verified pause: `dumpsys activity services` confirmed service remains `isForeground=true` on `channel=axiom_playback_channel` with `flags=ONLY_ALERT_ONCE|NO_CLEAR|FOREGROUND_SERVICE actions=3 vis=PUBLIC`.
+    - Verified resume: Dispatched `cmd media_session dispatch play` while paused; resumed sentence 10 immediately without hesitation.
+    - Verified track navigation: Dispatched `cmd media_session dispatch next` -> `play`; advanced to sentence 11 and spoke immediately.
+  - Distribution: Copied updated APK to `G:\My Drive\axiom-reader-debug.apk`.
+- **Next Action**:
+  - Verify physical car / Desktop Head Unit (`mobile/run-dhu.bat`) and Wear OS watch playback resumption.
 
 - **Requested Objective**:
   Enable tapping the **Play** button on the Android Auto Desktop Head Unit (DHU) emulator, car screen, or Wear OS watch to wake up AXIOM Reader and resume playback even after the app has been closed or put to sleep by Android OS in the foreground/background.

@@ -234,8 +234,8 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         initWakeLock();
         initPlayer();
         initForwardingPlayer();
-        initMediaSession();
         initNotificationProvider();
+        initMediaSession();
         initTextToSpeech();
         restoreQueueFromDisk();
     }
@@ -245,6 +245,20 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         super.onStartCommand(intent, flags, startId);
         if (queueItems.isEmpty()) {
             restoreQueueFromDisk();
+        }
+        if (intent != null && Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) {
+            Log.i(TAG, "onStartCommand received ACTION_MEDIA_BUTTON: " + intent);
+            KeyEvent keyEvent = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+            if (keyEvent != null && keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+                int keyCode = keyEvent.getKeyCode();
+                if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
+                    acquireWakeLock();
+                    playbackOwner = "native";
+                    if (!isPlaying) {
+                        mainHandler.post(() -> dispatchTransportPlay(true));
+                    }
+                }
+            }
         }
         return START_STICKY;
     }
@@ -355,16 +369,19 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                 if (queueItems.isEmpty()) {
                     restoreQueueFromDisk();
                 }
+                super.play();
                 dispatchTransportPlay(true);
             }
 
             @Override
             public void pause() {
+                super.pause();
                 dispatchTransportPlay(false);
             }
 
             @Override
             public void setPlayWhenReady(boolean playWhenReady) {
+                super.setPlayWhenReady(playWhenReady);
                 dispatchTransportPlay(playWhenReady);
             }
 
@@ -463,24 +480,18 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
 
     private void dispatchTransportPlay(boolean shouldPlay) {
         Log.d(TAG, "dispatchTransportPlay: shouldPlay=" + shouldPlay + ", owner=" + playbackOwner + ", isPlaying=" + isPlaying + ", listener=" + (eventListener != null));
-        acquireWakeLock();
         if (shouldPlay) {
+            acquireWakeLock();
             cancelPauseGracePeriod();
             if (queueItems.isEmpty()) {
                 restoreQueueFromDisk();
             }
-            if ("native".equals(playbackOwner) || eventListener == null) {
-                play();
-            } else {
-                ensureSilencePlaying();
-            }
+            playbackOwner = "native";
+            play();
         } else {
+            releaseWakeLock();
             startPauseGracePeriod();
-            if ("native".equals(playbackOwner) || eventListener == null) {
-                pause();
-            } else if (player != null && player.isPlaying()) {
-                player.pause();
-            }
+            pause();
         }
         notifyTransportCommand(shouldPlay ? "play" : "pause", currentIndex);
     }
@@ -822,7 +833,11 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
                 Log.i(TAG, "Android TextToSpeech initialized successfully with USAGE_MEDIA");
                 if (pendingPlayAfterTtsInit) {
                     pendingPlayAfterTtsInit = false;
-                    play();
+                    if (isPlaying) {
+                        speakCurrentSentence();
+                    } else {
+                        play();
+                    }
                 }
             } else {
                 Log.w(TAG, "Android TextToSpeech failed to initialize: status " + status);
@@ -1043,6 +1058,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
 
             if (!this.queueItems.isEmpty()) {
                 updateMetadataForCurrentItem(this.queueItems.get(this.currentIndex));
+                startPauseGracePeriod();
                 Log.i(TAG, "Restored active queue from disk: " + this.queueItems.size() + " items, sentence=" + this.currentIndex + ", title=" + this.currentTitle);
                 return true;
             }
@@ -1124,7 +1140,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
 
             tts.setSpeechRate(currentSpeed);
             Bundle params = new Bundle();
-            params.putString(TextToSpeech.Engine.KEY_PARAM_STREAM, String.valueOf(android.media.AudioManager.STREAM_MUSIC));
+            params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_MUSIC);
             params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
             final String utteranceId = "utt_" + (++utteranceGeneration) + "_" + item.index;
             activeUtteranceId = utteranceId;
@@ -1156,7 +1172,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
             }
             tts.setSpeechRate(Math.max(0.5f, Math.min(3.0f, speed)));
             Bundle params = new Bundle();
-            params.putString(TextToSpeech.Engine.KEY_PARAM_STREAM, String.valueOf(android.media.AudioManager.STREAM_MUSIC));
+            params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_MUSIC);
             params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
             params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "preview_utt");
             int result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, "preview_utt");
@@ -1167,7 +1183,12 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
     }
 
     public synchronized void play() {
-        if (isPlaying) return;
+        if (isPlaying) {
+            if (isTtsReady && tts != null && activeUtteranceId == null) {
+                speakCurrentSentence();
+            }
+            return;
+        }
         isPlaying = true;
         cancelPauseGracePeriod();
         acquireWakeLock();
@@ -1182,6 +1203,7 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
         isPlaying = false;
         pendingPlayAfterTtsInit = false;
         invalidateActiveUtterance();
+        releaseWakeLock();
         startPauseGracePeriod();
         if (tts != null) tts.stop();
         if (player != null) player.pause();
@@ -1231,11 +1253,11 @@ public class AxiomMediaPlaybackService extends MediaLibraryService {
             ensureSilencePlaying();
         } else if ("paused".equals(state) || "stopped".equals(state)) {
             this.isPlaying = false;
+            releaseWakeLock();
             if ("paused".equals(state)) {
                 startPauseGracePeriod();
             } else {
                 cancelPauseGracePeriod();
-                releaseWakeLock();
                 abandonAudioFocus();
             }
             if (player != null && player.isPlaying()) {

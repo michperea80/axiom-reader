@@ -2122,9 +2122,22 @@ document.addEventListener('DOMContentLoaded', () => {
 function initNativePlaybackBridgeIntegration() {
   if (!window.axiomBridge) return;
   window.axiomBridge.on('transportCommand', ({ command, index }) => {
-    if (command === 'play') startTTS();
-    else if (command === 'pause' || command === 'stop') stopTTS();
-    else if (command === 'seek' && Number.isInteger(index)) jump(index - idx);
+    if (command === 'play') {
+      playing = true;
+      setBtn('pause');
+      updateMediaSession('playing');
+    } else if (command === 'pause' || command === 'stop') {
+      playing = false;
+      setBtn('play');
+      updateMediaSession('paused');
+    } else if (command === 'seek' && Number.isInteger(index)) {
+      if (index >= 0 && index < ttsList.length) {
+        idx = index;
+        highlightSpeechSentence(index);
+        updatePos();
+        saveCurrentReadPosition();
+      }
+    }
   });
   window.axiomBridge.on('positionChange', ({ index, blockIdx }) => {
     if (typeof index === 'number' && index >= 0 && index < ttsList.length) {
