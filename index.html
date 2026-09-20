@@ -425,7 +425,20 @@
               <label>GITHUB SECURITY LOGIN</label>
               <div class="tts-github-row">
                 <span class="tts-github-status" id="github-user-status">NOT LOGGED IN</span>
-                <button class="tts-github-btn" id="github-login-btn">LOGIN</button>
+                <div class="tts-github-actions">
+                  <button type="button" class="tts-github-btn" id="github-copy-token-btn" style="display:none;" title="Copy saved token">COPY</button>
+                  <button type="button" class="tts-github-btn" id="github-login-btn">LOGIN</button>
+                </div>
+              </div>
+              <div class="tts-token-input-container" id="github-token-container">
+                <div class="tts-token-row">
+                  <input type="password" id="tts-github-token-input" placeholder="Paste GitHub Token (ghp_...)" class="ui-chrome" autocomplete="off" autocapitalize="off" spellcheck="false" />
+                  <button type="button" class="tts-github-btn tts-btn-connect" id="github-verify-token-btn">CONNECT</button>
+                </div>
+                <div class="tts-token-subtext">
+                  <span>Personal Access Token (Mobile &amp; Web)</span>
+                  <a href="https://github.com/settings/tokens/new?description=AXIOM+Reader+TTS&scopes=read:user" target="_blank" rel="noopener noreferrer" id="github-create-token-link">+ Generate Token</a>
+                </div>
               </div>
             </div>
 
@@ -467,6 +480,7 @@
 
   <script src="./js/parser.js"></script>
   <script src="./js/reading-follow.js"></script>
+  <script src="./js/bridge/playback-bridge.js"></script>
   <script src="./js/tts.js"></script>
   <script src="./js/library.js"></script>
   <script src="./js/pdf.js"></script>

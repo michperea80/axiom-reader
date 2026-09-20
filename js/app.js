@@ -746,7 +746,19 @@ document.getElementById('pitch-slider').addEventListener('input', function () {
 });
 
 document.getElementById('voice-sel').addEventListener('change', () => {
-  localStorage.setItem(SAVED_VOICE_KEY, document.getElementById('voice-sel').value);
+  const val = document.getElementById('voice-sel').value;
+  localStorage.setItem(SAVED_VOICE_KEY, val);
+  if (val.startsWith('native:') && window.axiomBridge && window.axiomBridge.isNative()) {
+    window.axiomBridge.setVoice(val.substring('native:'.length)).catch(() => {});
+    localStorage.setItem('axiom-tts-mode', 'offline');
+  } else if (val.startsWith('gemini-') || /^en-(US|GB)-Neural2-/.test(val) || val.startsWith('en-US-Chirp3-HD-') || val.startsWith('en-GB-Chirp3-HD-')) {
+    localStorage.setItem('axiom-tts-mode', 'proxy');
+  } else {
+    localStorage.setItem('axiom-tts-mode', 'offline');
+    if (val === SYSTEM_VOICE_VALUE && window.axiomBridge?.isNative()) {
+      window.axiomBridge.setVoice('system').catch(console.error);
+    }
+  }
   if (playing) { stopTTS(); startTTS(); }
 });
 

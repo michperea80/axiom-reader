@@ -1,0 +1,62 @@
+[
+  {
+    "profile": "F-default",
+    "voice": "en-US-Neural2-F",
+    "style": "default",
+    "output": "C:\\Users\\micha\\Documents\\Dev\\AXIOM Reader\\reports\\audio\\neural2-us-f-default-sample-1.wav",
+    "wavBytes": 1076898,
+    "audioSeconds": 22.43,
+    "timingMarks": 8,
+    "marksMonotonic": true,
+    "firstMarkSeconds": 0.014999999664723873,
+    "lastMarkSeconds": 17.9080810546875,
+    "generationMs": 1664,
+    "proxyCache": "miss",
+    "responseStyle": "default"
+  },
+  {
+    "profile": "F-lively",
+    "voice": "en-US-Neural2-F",
+    "style": "lively",
+    "output": "C:\\Users\\micha\\Documents\\Dev\\AXIOM Reader\\reports\\audio\\neural2-us-f-lively-sample-1.wav",
+    "wavBytes": 1078506,
+    "audioSeconds": 22.47,
+    "timingMarks": 8,
+    "marksMonotonic": true,
+    "firstMarkSeconds": 0.004999999888241291,
+    "lastMarkSeconds": 17.904123306274414,
+    "generationMs": 1690,
+    "proxyCache": "miss",
+    "responseStyle": "lively"
+  },
+  {
+    "profile": "J-default",
+    "voice": "en-US-Neural2-J",
+    "style": "default",
+    "output": "C:\\Users\\micha\\Documents\\Dev\\AXIOM Reader\\reports\\audio\\neural2-us-j-default-sample-1.wav",
+    "wavBytes": 1036786,
+    "audioSeconds": 21.6,
+    "timingMarks": 8,
+    "marksMonotonic": true,
+    "firstMarkSeconds": 0.014999999664723873,
+    "lastMarkSeconds": 17.2864990234375,
+    "generationMs": 1117,
+    "proxyCache": "miss",
+    "responseStyle": "default"
+  },
+  {
+    "profile": "J-lively",
+    "voice": "en-US-Neural2-J",
+    "style": "lively",
+    "output": "C:\\Users\\micha\\Documents\\Dev\\AXIOM Reader\\reports\\audio\\neural2-us-j-lively-sample-1.wav",
+    "wavBytes": 1050170,
+    "audioSeconds": 21.88,
+    "timingMarks": 8,
+    "marksMonotonic": true,
+    "firstMarkSeconds": 0.014999999664723873,
+    "lastMarkSeconds": 17.488664627075195,
+    "generationMs": 1146,
+    "proxyCache": "miss",
+    "responseStyle": "lively"
+  }
+]

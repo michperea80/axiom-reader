@@ -108,7 +108,7 @@ function recoverPlayback() {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   
   const engine = getSelectedVoiceEngine();
-  if (engine === 'LEGACY') {
+  if (engine === 'LEGACY' && synth) {
     synth.resume();
     if (!synth.paused && !synth.speaking && !synth.pending) {
       synth.cancel();
@@ -410,21 +410,22 @@ function voiceLabel(voice) {
 
 // Determines the currently active engine type based on user selection in dropdown and mode settings
 function getSelectedVoiceEngine() {
+  const sel = document.getElementById('voice-sel');
+  if (sel && sel.value) {
+    const val = sel.value;
+    if (val.startsWith('gemini-')) return 'GEMINI';
+    if (/^en-(US|GB)-Neural2-/.test(val)) return 'NEURAL2';
+    if (val.startsWith('en-US-Chirp3-HD-') || val.startsWith('en-GB-Chirp3-HD-')) return 'CHIRP3_HD';
+    if (val.startsWith('native:') || val === SYSTEM_VOICE_VALUE) return 'LEGACY';
+  }
   const mode = localStorage.getItem('axiom-tts-mode') || 'offline';
   if (mode !== 'proxy') return 'LEGACY';
-  
-  const sel = document.getElementById('voice-sel');
-  if (!sel) return 'LEGACY';
-  const val = sel.value;
-  if (val.startsWith('gemini-')) return 'GEMINI';
-  if (/^en-(US|GB)-Neural2-/.test(val)) return 'NEURAL2';
-  if (val.startsWith('en-US-Chirp3-HD-') || val.startsWith('en-GB-Chirp3-HD-')) return 'CHIRP3_HD';
   return 'LEGACY';
 }
 
 function getSelectedVoice() {
   const sel = document.getElementById('voice-sel');
-  if (!sel || sel.value === SYSTEM_VOICE_VALUE) return null;
+  if (!sel || sel.value === SYSTEM_VOICE_VALUE || (sel.value && sel.value.startsWith('native:'))) return null;
   
   const engine = getSelectedVoiceEngine();
   if (engine !== 'LEGACY') return null; // Web Audio API uses code ids
@@ -438,12 +439,13 @@ function useSystemVoice(save = true) {
   if (save) localStorage.setItem(SAVED_VOICE_KEY, SYSTEM_VOICE_VALUE);
 }
 
-// Populates the dropdown menu with structured, grouped options for advanced and legacy voices
+let voiceListRevision = 0;
 function loadVoices() {
-  const all = synth.getVoices();
+  const revision = ++voiceListRevision;
   const sel = document.getElementById('voice-sel');
   if (!sel) return;
 
+  const all = (typeof synth !== 'undefined' && synth && typeof synth.getVoices === 'function') ? (synth.getVoices() || []) : [];
   const unique = [];
   const seen = new Set();
   all.forEach(v => {
@@ -456,7 +458,7 @@ function loadVoices() {
 
   const saved = localStorage.getItem(SAVED_VOICE_KEY);
   const current = sel.value && sel.value !== SYSTEM_VOICE_VALUE ? sel.value : '';
-  const prev = current || saved || SYSTEM_VOICE_VALUE;
+  const prev = saved || current || SYSTEM_VOICE_VALUE;
 
   sel.innerHTML = '';
 
@@ -466,44 +468,43 @@ function loadVoices() {
   systemOption.textContent = 'Phone default voice';
   sel.appendChild(systemOption);
 
-  const mode = localStorage.getItem('axiom-tts-mode') || 'offline';
-  
-  if (mode === 'proxy') {
-    // 2. Google Neural2 voices with sentence timing marks
-    const neural2Group = document.createElement('optgroup');
-    neural2Group.label = 'Google Neural2 (Timed Highlighting)';
-    ADVANCED_NEURAL2_VOICES.forEach(nv => {
-      const option = document.createElement('option');
-      option.value = advancedVoiceValue(nv);
-      option.textContent = nv.name;
-      neural2Group.appendChild(option);
-    });
-    sel.appendChild(neural2Group);
+  // 2. Google Neural2 voices with sentence timing marks
+  const neural2Group = document.createElement('optgroup');
+  neural2Group.label = 'Google Neural2 (Timed Highlighting)';
+  ADVANCED_NEURAL2_VOICES.forEach(nv => {
+    const option = document.createElement('option');
+    option.value = advancedVoiceValue(nv);
+    option.textContent = nv.name;
+    neural2Group.appendChild(option);
+  });
+  sel.appendChild(neural2Group);
 
-    // 3. Gemini 3.1 Flash TTS (stream-capable provider model)
-    const geminiGroup = document.createElement('optgroup');
-    geminiGroup.label = 'Gemini 3.1 Flash TTS (AI Synthesis)';
-    ADVANCED_GEMINI_VOICES.forEach(gv => {
-      const option = document.createElement('option');
-      option.value = gv.id;
-      option.textContent = `${gv.name} (Requires Proxy)`;
-      geminiGroup.appendChild(option);
-    });
-    sel.appendChild(geminiGroup);
+  // 3. Gemini 3.1 Flash TTS (stream-capable provider model)
+  const geminiGroup = document.createElement('optgroup');
+  geminiGroup.label = 'Gemini 3.1 Flash TTS (AI Synthesis)';
+  ADVANCED_GEMINI_VOICES.forEach(gv => {
+    const option = document.createElement('option');
+    option.value = gv.id;
+    option.textContent = `${gv.name} (Requires Proxy)`;
+    geminiGroup.appendChild(option);
+  });
+  sel.appendChild(geminiGroup);
 
-    // 4. Chirp 3 HD Voices (Google Cloud High-Def)
-    const chirpGroup = document.createElement('optgroup');
-    chirpGroup.label = 'Chirp 3 HD Voices (Google Cloud)';
-    ADVANCED_CHIRP_VOICES.forEach(cv => {
-      const option = document.createElement('option');
-      option.value = cv.id;
-      option.textContent = cv.name;
-      chirpGroup.appendChild(option);
-    });
-    sel.appendChild(chirpGroup);
-  }
+  // 4. Chirp 3 HD Voices (Google Cloud High-Def)
+  const chirpGroup = document.createElement('optgroup');
+  chirpGroup.label = 'Chirp 3 HD Voices (Google Cloud)';
+  ADVANCED_CHIRP_VOICES.forEach(cv => {
+    const option = document.createElement('option');
+    option.value = cv.id;
+    option.textContent = cv.name;
+    chirpGroup.appendChild(option);
+  });
+  sel.appendChild(chirpGroup);
 
-  // 5. Local Device Voices (Legacy fallback)
+  // 5. Native Android TTS voices (when running in native mobile bridge shell)
+  loadNativeVoices(sel, prev, revision);
+
+  // 6. Local Device Voices (Legacy fallback)
   if (voices.length > 0) {
     const nativeGroup = document.createElement('optgroup');
     nativeGroup.label = 'Local Device Voices (Legacy)';
@@ -522,19 +523,53 @@ function loadVoices() {
     return;
   }
 
-  useSystemVoice(!!saved);
+  // Native voice options may still be loading; retain the saved preference.
+  useSystemVoice(false);
+}
+
+async function loadNativeVoices(sel, prev, revision) {
+  if (!window.axiomBridge || !window.axiomBridge.isNative()) return;
+  try {
+    const nativeList = await window.axiomBridge.getVoices();
+    if (revision !== voiceListRevision) return;
+    if (nativeList && nativeList.length > 0) {
+      let nativeGroup = document.getElementById('native-android-voices-group');
+      if (!nativeGroup) {
+        nativeGroup = document.createElement('optgroup');
+        nativeGroup.id = 'native-android-voices-group';
+        nativeGroup.label = 'Android Device Voices (Native TTS)';
+        sel.appendChild(nativeGroup);
+      }
+      nativeGroup.innerHTML = '';
+      nativeList.forEach(v => {
+        const option = document.createElement('option');
+        option.value = 'native:' + v.name;
+        option.textContent = v.name + (v.locale ? ' (' + v.locale + ')' : '');
+        nativeGroup.appendChild(option);
+      });
+      const desired = localStorage.getItem(SAVED_VOICE_KEY) || prev;
+      if (desired && [...sel.options].some(o => o.value === desired)) {
+        sel.value = desired;
+      }
+    }
+  } catch (err) {
+    console.warn('[TTS] Could not query native voices:', err);
+  }
 }
 
 function primeVoices() {
-  if (!synth) return;
   loadVoices();
   [250, 750, 1500, 3000].forEach(delay => setTimeout(loadVoices, delay));
 }
 
-if (typeof synth !== 'undefined') {
-  synth.addEventListener('voiceschanged', loadVoices);
-  primeVoices();
+if (typeof synth !== 'undefined' && synth) {
+  if (typeof synth.addEventListener === 'function') {
+    synth.addEventListener('voiceschanged', loadVoices);
+  } else {
+    synth.onvoiceschanged = loadVoices;
+  }
 }
+primeVoices();
 
 function clearSpeechTimer() {
   if (speechTimer) {
@@ -568,7 +603,7 @@ function speakOne(sentenceIdx, token, attempt = 0, forceSystemVoice = false) {
   if (engine === 'LEGACY') {
     try {
       currentUtterance = buildUtterance(item, sentenceIdx, token, attempt, forceSystemVoice);
-      synth.speak(currentUtterance);
+      if (synth) synth.speak(currentUtterance);
     } catch (_) {
       currentUtterance = null;
       stopTTS();
@@ -781,6 +816,9 @@ function startAdvancedTimedFollowing(sourceNode, chunk, timings, token, audioDur
       idx = sentenceIdx;
       highlightSpeechSentence(sentenceIdx);
       updatePos();
+      if (window.axiomBridge && window.axiomBridge.isNative()) {
+        window.axiomBridge.setPlaybackState({ state: 'playing', index: sentenceIdx }).catch(() => {});
+      }
       nextTiming += 1;
     }
     // Track the audio clock directly. A short timer keeps following reliable
@@ -808,6 +846,9 @@ async function speakAdvanced(chunk, token) {
   highlightSpeechSentence(chunk.startIdx);
   updatePos();
   updateMediaSession('playing');
+  if (window.axiomBridge && window.axiomBridge.isNative()) {
+    window.axiomBridge.setPlaybackState({ state: 'playing', index: chunk.startIdx }).catch(() => {});
+  }
   const engine = getSelectedVoiceEngine();
 
   const playBtn = document.getElementById('play-btn');
@@ -830,7 +871,7 @@ async function speakAdvanced(chunk, token) {
     setTimeout(() => notice.remove(), 4000);
     try {
       currentUtterance = buildUtterance(item, chunk.startIdx, token, 0, true);
-      synth.speak(currentUtterance);
+      if (synth) synth.speak(currentUtterance);
     } catch (_) {
       stopTTS();
     }
@@ -1010,7 +1051,7 @@ function queueSpeechFrom(startIdx) {
   isAudioContextSpeaking = false;
   audioAnalyser = null;
 
-  const needsCancel = synth.speaking || synth.pending || synth.paused;
+  const needsCancel = synth && (synth.speaking || synth.pending || synth.paused);
   if (needsCancel) synth.cancel();
   currentUtterance = null;
 
@@ -1041,7 +1082,7 @@ function updateVisualizerAnimation() {
     const time = Date.now() * 0.005;
     
     // Check if we are actively outputting voice bytes
-    const isSpeaking = (synth.speaking && !synth.paused) || isAudioContextSpeaking;
+    const isSpeaking = (synth && synth.speaking && !synth.paused) || isAudioContextSpeaking;
     
     if (isAudioContextSpeaking && audioAnalyser) {
       // Connect visualizer bars to actual real-time audio volume
@@ -1087,8 +1128,49 @@ function updateVisualizerAnimation() {
 
 
 // --- SECTION 8: MASTER PLAYER CONTROLS ---
+let playbackStartRevision = 0;
 function startTTS() {
+  if (playing) return;
   if (!ttsList.length) { updatePos(); return; }
+  const startRevision = ++playbackStartRevision;
+
+  // Route to platform-native playback service when running inside native mobile shell
+  if (window.axiomBridge && window.axiomBridge.isNative()) {
+    const fileElem = document.getElementById('file-name');
+    const fileName = fileElem ? fileElem.textContent : 'AXIOM Document';
+    const speed = parseFloat(document.getElementById('rate-slider')?.value) || 1;
+    const engine = getSelectedVoiceEngine();
+
+    window.axiomBridge.loadQueue({
+      documentId: (typeof currentRecentId !== 'undefined' && currentRecentId !== null) ? currentRecentId : 'doc_' + Date.now(),
+      title: fileName,
+      playbackOwner: engine === 'LEGACY' ? 'native' : 'web',
+      items: ttsList,
+      startIndex: idx,
+      speed: speed
+    }).then(async () => {
+      if (!playing || startRevision !== playbackStartRevision) return;
+      if (engine === 'LEGACY') {
+        const voice = localStorage.getItem(SAVED_VOICE_KEY) || SYSTEM_VOICE_VALUE;
+        await window.axiomBridge.setVoice(voice.startsWith('native:') ? voice.substring(7) : 'system');
+        if (!playing || startRevision !== playbackStartRevision) return;
+        window.axiomBridge.play().catch(() => {});
+      } else {
+        window.axiomBridge.setPlaybackState({ state: 'playing', index: idx }).catch(() => {});
+      }
+    }).catch(err => {
+      console.error('Native bridge loadQueue error:', err);
+      if (startRevision === playbackStartRevision) stopTTS();
+    });
+
+    if (engine === 'LEGACY') {
+      playing = true;
+      setBtn('pause');
+      updateMediaSession('playing');
+      return;
+    }
+  }
+
   ensureAudioCtx();
   primeVoices();
   playing = true;
@@ -1107,16 +1189,35 @@ function startTTS() {
 }
 
 function stopTTS() {
+  playbackStartRevision++;
   saveCurrentReadPosition();
   playing = false;
   queueToken += 1;
-  cancelAdvancedAudioRequests();
-  cancelAdvancedTimedFollowing();
-  clearSpeechTimer();
-  currentUtterance = null;
   setBtn('play');
   stopKeepAlive();
   releaseWakeLock();
+  clearSpeechTimer();
+  cancelAdvancedAudioRequests();
+  cancelAdvancedTimedFollowing();
+  
+  if (window.axiomBridge && window.axiomBridge.isNative()) {
+    window.axiomBridge.pause().catch(() => {});
+    window.axiomBridge.setPlaybackState({ state: 'paused', index: idx }).catch(() => {});
+  }
+
+  // Halt Web Audio source nodes
+  if (currentAudioSource) {
+    try { currentAudioSource.stop(); } catch (_) {}
+    currentAudioSource = null;
+  }
+  isAudioContextSpeaking = false;
+  audioAnalyser = null;
+  
+  // Halt native browser synthesis
+  if (synth) {
+    synth.cancel();
+  }
+  currentUtterance = null;
   updateMediaSession('paused');
   
   const viz = document.getElementById('visualizer');
@@ -1140,9 +1241,9 @@ function stopTTS() {
     currentAudioSource = null;
   }
   isAudioContextSpeaking = false;
-  audioAnalyser = null;
-
-  synth.cancel();
+  if (synth) {
+    synth.cancel();
+  }
 }
 
 function toggleTTS() { if (playing) stopTTS(); else startTTS(); }
@@ -1184,6 +1285,8 @@ function resetTTSVoice() {
 // Watchdog interval to recover speech if browser engine hangs (common Chromium issue)
 setInterval(() => {
   if (!playing) return;
+  if (window.axiomBridge && window.axiomBridge.isNative()) return;
+  if (!synth) return;
   
   const engine = getSelectedVoiceEngine();
   if (engine !== 'LEGACY') return; // Managed by AudioContext event callbacks
@@ -1508,7 +1611,12 @@ function previewTTSVoice() {
   primeVoices();
 
   if (engine === 'LEGACY') {
-    // Use the browser's built-in speech to preview
+    if (window.axiomBridge && window.axiomBridge.isNative()) {
+      const speed = parseFloat(document.getElementById('rate-slider')?.value) || 1.0;
+      window.axiomBridge.speakText({ text: TTS_TEST_TEXT, speed }).catch(() => {});
+      return;
+    }
+    if (!synth) return;
     synth.cancel();
     const utt = new SpeechSynthesisUtterance(TTS_TEST_TEXT);
     const selectedVoice = getSelectedVoice();
@@ -1558,6 +1666,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const proxyUrlInput = document.getElementById('tts-proxy-url');
   const githubUserStatus = document.getElementById('github-user-status');
   const githubLoginBtn = document.getElementById('github-login-btn');
+  const githubCopyTokenBtn = document.getElementById('github-copy-token-btn');
+  const githubTokenContainer = document.getElementById('github-token-container');
+  const githubTokenInput = document.getElementById('tts-github-token-input');
+  const githubVerifyTokenBtn = document.getElementById('github-verify-token-btn');
   const proxySection = document.getElementById('tts-proxy-section');
   const githubSection = document.getElementById('tts-github-section');
   const quotaSection = document.getElementById('tts-quota-section');
@@ -1661,14 +1773,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- UPDATE GITHUB STATUS DISPLAY ---
   function updateGithubStatus() {
     const githubUsername = localStorage.getItem('axiom-github-username') || '';
+    const githubToken = localStorage.getItem('axiom-github-token') || '';
     if (githubUsername) {
       githubUserStatus.textContent = `LOGGED IN AS: ${githubUsername.toUpperCase()}`;
       githubUserStatus.style.color = 'var(--primary)';
       githubLoginBtn.textContent = 'LOGOUT';
+      if (githubCopyTokenBtn) {
+        githubCopyTokenBtn.style.display = githubToken ? 'inline-block' : 'none';
+      }
+      if (githubTokenContainer) {
+        githubTokenContainer.style.display = 'none';
+      }
     } else {
       githubUserStatus.textContent = 'NOT LOGGED IN';
       githubUserStatus.style.color = 'var(--text-muted)';
-      githubLoginBtn.textContent = 'LOGIN';
+      const isMobile = (window.axiomBridge && typeof window.axiomBridge.isNative === 'function' && window.axiomBridge.isNative()) || window.location.hostname === 'localhost';
+      githubLoginBtn.textContent = isMobile ? 'INFO' : 'LOGIN';
+      if (githubCopyTokenBtn) {
+        githubCopyTokenBtn.style.display = 'none';
+      }
+      if (githubTokenContainer) {
+        githubTokenContainer.style.display = 'flex';
+      }
     }
   }
 
@@ -1725,6 +1851,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- SAVE SETTINGS ---
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
+      const resumeAfterSave = playing;
+      stopTTS();
       // Determine mode from engine selection
       const newMode = (pendingEngine === 'legacy') ? 'offline' : 'proxy';
 
@@ -1749,6 +1877,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       closeModal();
+      if (window.axiomBridge?.isNative()) {
+        const voice = pendingVoice?.startsWith('native:') ? pendingVoice.substring(7) : 'system';
+        window.axiomBridge.setVoice(voice).catch(console.error);
+      }
+      if (resumeAfterSave) startTTS();
     });
   }
 
@@ -1760,6 +1893,115 @@ document.addEventListener('DOMContentLoaded', () => {
       uri += '/';
     }
     return uri;
+  }
+
+  // --- VERIFY & SAVE GITHUB TOKEN ---
+  async function verifyAndSaveToken(rawToken) {
+    const token = (rawToken || '').trim();
+    if (!token) {
+      alert('Please enter or paste your GitHub Personal Access Token.');
+      if (githubTokenInput) githubTokenInput.focus();
+      return;
+    }
+
+    const previousBtnText = githubVerifyTokenBtn ? githubVerifyTokenBtn.textContent : 'CONNECT';
+    if (githubVerifyTokenBtn) {
+      githubVerifyTokenBtn.disabled = true;
+      githubVerifyTokenBtn.textContent = 'VERIFYING...';
+    }
+
+    try {
+      const res = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Axiom-Reader'
+        }
+      });
+
+      if (!res.ok) {
+        let errDesc = `GitHub returned status ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData.message) errDesc = errData.message;
+        } catch (_) {}
+        throw new Error(`Token verification failed: ${errDesc}. Ensure the token is active and includes 'read:user' permission.`);
+      }
+
+      const userData = await res.json();
+      const username = userData.login;
+      if (!username) {
+        throw new Error('Unable to retrieve GitHub username from profile response.');
+      }
+
+      localStorage.setItem('axiom-github-token', token);
+      localStorage.setItem('axiom-github-username', username);
+
+      const proxyUrl = cleanProxyUrl(proxyUrlInput.value) || DEFAULT_PROXY_URL;
+      localStorage.setItem('axiom-tts-proxy-url', proxyUrl);
+
+      if (pendingEngine !== 'legacy') {
+        localStorage.setItem('axiom-tts-mode', 'proxy');
+      }
+
+      if (githubTokenInput) githubTokenInput.value = '';
+      updateGithubStatus();
+      loadVoices();
+
+      const toast = document.createElement('div');
+      toast.className = 'tts-error-toast';
+      toast.style.background = 'var(--surface-highest)';
+      toast.style.borderColor = 'var(--primary)';
+      toast.textContent = `Connected as ${username.toUpperCase()}! Cloud voices ready.`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+
+    } catch (err) {
+      console.error('[AXIOM Auth] Token verification error:', err);
+      alert(err.message || 'Token verification failed. Please check your token and internet connection.');
+    } finally {
+      if (githubVerifyTokenBtn) {
+        githubVerifyTokenBtn.disabled = false;
+        githubVerifyTokenBtn.textContent = previousBtnText;
+      }
+    }
+  }
+
+  if (githubVerifyTokenBtn && githubTokenInput) {
+    githubVerifyTokenBtn.addEventListener('click', () => {
+      void verifyAndSaveToken(githubTokenInput.value);
+    });
+
+    githubTokenInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        void verifyAndSaveToken(githubTokenInput.value);
+      }
+    });
+  }
+
+  if (githubCopyTokenBtn) {
+    githubCopyTokenBtn.addEventListener('click', async () => {
+      const token = localStorage.getItem('axiom-github-token');
+      if (!token) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(token);
+        } else {
+          const temp = document.createElement('textarea');
+          temp.value = token;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand('copy');
+          temp.remove();
+        }
+        const originalText = githubCopyTokenBtn.textContent;
+        githubCopyTokenBtn.textContent = 'COPIED!';
+        setTimeout(() => { githubCopyTokenBtn.textContent = originalText; }, 2000);
+      } catch (err) {
+        alert('Could not copy token automatically.');
+      }
+    });
   }
 
   // --- GITHUB OAUTH LOGIN/LOGOUT ---
@@ -1775,7 +2017,16 @@ document.addEventListener('DOMContentLoaded', () => {
         loadVoices();
         alert('Logged out successfully.');
       } else {
-        // Log in — save current state first
+        const isMobile = (window.axiomBridge && typeof window.axiomBridge.isNative === 'function' && window.axiomBridge.isNative()) || window.location.hostname === 'localhost';
+        if (isMobile) {
+          alert('On mobile, connect using a GitHub Personal Access Token below.\n\nTap "+ Generate Token" to create one on GitHub with 1 click, then paste it into the token field and tap CONNECT.');
+          if (githubTokenInput) {
+            githubTokenInput.focus();
+          }
+          return;
+        }
+
+        // Web OAuth login
         const proxyUrl = cleanProxyUrl(proxyUrlInput.value);
         if (!proxyUrl) {
           alert('Please enter a Proxy Server URL first!');
@@ -1865,3 +2116,38 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore initial voices listing
   loadVoices();
 });
+
+// --- SECTION 12: NATIVE MOBILE BRIDGE INTEGRATION ---
+
+function initNativePlaybackBridgeIntegration() {
+  if (!window.axiomBridge) return;
+  window.axiomBridge.on('transportCommand', ({ command, index }) => {
+    if (command === 'play') startTTS();
+    else if (command === 'pause' || command === 'stop') stopTTS();
+    else if (command === 'seek' && Number.isInteger(index)) jump(index - idx);
+  });
+  window.axiomBridge.on('positionChange', ({ index, blockIdx }) => {
+    if (typeof index === 'number' && index >= 0 && index < ttsList.length) {
+      idx = index;
+      highlightSpeechSentence(index);
+      updatePos();
+      saveCurrentReadPosition();
+      // Position notifications describe state; only transport commands start audio.
+    }
+  });
+  // State acknowledgments must never execute commands or overwrite a newer intent.
+  window.axiomBridge.on('queueEnded', () => {
+    if (getSelectedVoiceEngine() === 'LEGACY') stopTTS();
+  });
+  window.axiomBridge.on('error', error => {
+    console.error('Native playback failed:', error);
+    stopTTS();
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNativePlaybackBridgeIntegration);
+} else {
+  initNativePlaybackBridgeIntegration();
+}
+

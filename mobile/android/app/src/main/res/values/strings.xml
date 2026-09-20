@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AXIOM Reader</string>
+    <string name="title_activity_main">AXIOM Reader</string>
+    <string name="package_name">com.axiom.reader</string>
+    <string name="custom_url_scheme">com.axiom.reader</string>
+    <string name="playback_channel_name">AXIOM Narration</string>
+</resources>

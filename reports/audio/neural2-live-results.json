@@ -1,0 +1,86 @@
+[
+  {
+    "voice": "en-US-Neural2-D",
+    "wavPath": "C:\\Users\\micha\\Documents\\Dev\\AXIOM Reader\\reports\\audio\\neural2-us-d-sample-1.wav",
+    "wavBytes": 996478,
+    "timingCount": 8,
+    "timings": [
+      {
+        "segmentIndex": 0,
+        "timeSeconds": 0.014999999664723873
+      },
+      {
+        "segmentIndex": 1,
+        "timeSeconds": 4.462791442871094
+      },
+      {
+        "segmentIndex": 2,
+        "timeSeconds": 6.346999645233154
+      },
+      {
+        "segmentIndex": 3,
+        "timeSeconds": 8.901165962219238
+      },
+      {
+        "segmentIndex": 4,
+        "timeSeconds": 10.71049976348877
+      },
+      {
+        "segmentIndex": 5,
+        "timeSeconds": 12.691208839416504
+      },
+      {
+        "segmentIndex": 6,
+        "timeSeconds": 15.422041893005371
+      },
+      {
+        "segmentIndex": 7,
+        "timeSeconds": 16.518291473388672
+      }
+    ],
+    "providerDurationMs": 1166,
+    "cache": "miss"
+  },
+  {
+    "voice": "en-GB-Neural2-B",
+    "wavPath": "C:\\Users\\micha\\Documents\\Dev\\AXIOM Reader\\reports\\audio\\neural2-uk-b-sample-1.wav",
+    "wavBytes": 1002418,
+    "timingCount": 8,
+    "timings": [
+      {
+        "segmentIndex": 0,
+        "timeSeconds": 0.014999999664723873
+      },
+      {
+        "segmentIndex": 1,
+        "timeSeconds": 4.394541263580322
+      },
+      {
+        "segmentIndex": 2,
+        "timeSeconds": 6.495416164398193
+      },
+      {
+        "segmentIndex": 3,
+        "timeSeconds": 9.110082626342773
+      },
+      {
+        "segmentIndex": 4,
+        "timeSeconds": 10.82237434387207
+      },
+      {
+        "segmentIndex": 5,
+        "timeSeconds": 12.945332527160645
+      },
+      {
+        "segmentIndex": 6,
+        "timeSeconds": 15.643207550048828
+      },
+      {
+        "segmentIndex": 7,
+        "timeSeconds": 16.775331497192383
+      }
+    ],
+    "providerDurationMs": 1015,
+    "cache": "miss"
+  }
+]

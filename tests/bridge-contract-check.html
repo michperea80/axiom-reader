@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AXIOM Playback Bridge Contract Verification</title>
+  <style>
+    body { margin: 0; background: #0c101a; color: #f0f4fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; }
+    h1 { font-size: 20px; margin-top: 0; color: #4da3ff; }
+    #status { padding: 8px 12px; background: #182234; border-radius: 6px; display: inline-block; margin-bottom: 16px; font-size: 14px; }
+    #results p { margin: 6px 0; font-family: monospace; font-size: 13px; line-height: 1.5; }
+    .pass { color: #52c41a; }
+    .fail { color: #ff4d4f; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>AXIOM Reader — Playback Bridge Contract Verification</h1>
+  <div id="status">Running bridge verification suite...</div>
+  <section id="results"></section>
+
+  <!-- Load bridge module -->
+  <script src="../js/bridge/playback-bridge.js"></script>
+
+  <script>
+    window.showBridgeResults = (results) => {
+      const output = document.getElementById('results');
+      const status = document.getElementById('status');
+      output.innerHTML = '';
+      
+      const hasFail = results.some(text => text.startsWith('FAIL'));
+      status.textContent = hasFail ? 'Checks need attention' : `All ${results.length} bridge contract checks passed`;
+      status.style.color = hasFail ? '#ff4d4f' : '#52c41a';
+
+      results.forEach(text => {
+        const item = document.createElement('p');
+        item.textContent = text;
+        item.className = text.startsWith('PASS') ? 'pass' : 'fail';
+        output.appendChild(item);
+      });
+    };
+  </script>
+
+  <!-- Run test suite -->
+  <script src="bridge-contract-checks.js"></script>
+</body>
+</html>

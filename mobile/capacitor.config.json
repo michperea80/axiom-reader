@@ -1,0 +1,11 @@
+{
+  "appId": "com.axiom.reader",
+  "appName": "AXIOM Reader",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "webContentsDebuggingEnabled": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "axiom-reader-mobile",
+  "version": "1.0.0",
+  "description": "Native mobile companion shell for AXIOM Reader",
+  "private": true,
+  "scripts": {
+    "stage-web": "node scripts/stage-web.js",
+    "cap": "npx cap",
+    "sync": "npm run stage-web && npx cap sync",
+    "copy": "npm run stage-web && npx cap copy"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  }
+}

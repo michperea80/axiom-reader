@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+mobile/node_modules/
+
+# Staged & build directories
+mobile/www/
+mobile/android/.gradle/
+mobile/android/.codex-gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/app/src/main/assets/public/
+mobile/android/app/src/main/assets/capacitor.config.json
+mobile/android/app/src/main/assets/capacitor.plugins.json
+mobile/android/capacitor-cordova-android-plugins/
+
+# OS & Logs
+*.log
+.DS_Store
+Thumbs.db

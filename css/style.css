@@ -1562,6 +1562,63 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
   color: var(--primary);
 }
 
+.tts-github-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tts-token-input-container {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tts-token-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tts-token-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.tts-btn-connect {
+  background: rgba(70, 245, 224, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.tts-btn-connect:hover {
+  background: var(--primary);
+  color: #000;
+}
+
+.tts-token-subtext {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+}
+
+.tts-token-subtext a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s;
+}
+
+.tts-token-subtext a:hover {
+  color: var(--text-bright);
+  text-decoration: underline;
+}
+
 .tts-save-row {
   margin-top: auto;
   padding-top: 12px;
