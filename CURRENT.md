@@ -1,5 +1,28 @@
 # Current work — AXIOM Reader
 
+## Icon Refresh — 2026-09-20
+
+- **Requested Objective**:
+  Update all app icons, notification icons, launcher icons, adaptive foregrounds, and PWA icons using refreshed assets from `New Icons` (`Notification.png`, `icon_192x192.png`, `icon_512x512.png`).
+- **Implementation**:
+  - Executed `mobile/scripts/update-icons.ps1` using high-quality bicubic resampling.
+  - Updated PWA web icons: `icons/icon-192.png`, `icons/icon-512.png`.
+  - Updated Android Auto / MediaSession artwork: `res/drawable/app_icon.png` (512x512).
+  - Updated notification icons: `res/drawable/ic_notification.png` and density buckets `mdpi` (24x24), `hdpi` (36x36), `xhdpi` (48x48), `xxhdpi` (72x72), `xxxhdpi` (96x96).
+  - Updated launcher and round icons across all densities (`mdpi` 48px to `xxxhdpi` 192px).
+  - Updated adaptive launcher foregrounds with centered safe zone across all densities (`mdpi` 108px to `xxxhdpi` 432px).
+- **Affected Files**:
+  - `icons/icon-192.png`, `icons/icon-512.png`
+  - `mobile/android/app/src/main/res/drawable/app_icon.png`
+  - `mobile/android/app/src/main/res/drawable*/ic_notification.png`
+  - `mobile/android/app/src/main/res/mipmap*/*`
+- **Verification & Deployment**:
+  - Synced web assets (`npm run sync`) and compiled APK (`assembleDebug`) with `BUILD SUCCESSFUL in 10s`.
+  - Installed via ADB to connected Samsung Galaxy Z Fold (`RFGL742NXQV`).
+  - Copied to Google Drive: `G:\My Drive\axiom-reader-debug.apk`.
+- **Next Action**:
+  - Real-world in-car verification with Android Auto vehicle system.
+
 ## Android Auto & Wear OS Remote Wakeup & Resumption Resolution — 2026-09-20
 
 - **Requested Objective**:
